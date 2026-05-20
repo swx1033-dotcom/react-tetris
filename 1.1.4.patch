@@ -1,0 +1,147 @@
+diff --git a/src/components/matrix/index.js b/src/components/matrix/index.js
+index c4b1d2d..8f73cff 100644
+--- a/src/components/matrix/index.js
++++ b/src/components/matrix/index.js
+@@ -5,7 +5,7 @@ import propTypes from 'prop-types';
+ 
+ import style from './index.less';
+ import { isClear } from '../../unit/';
+-import { fillLine, blankLine } from '../../unit/const';
++import { fillLine, blankLine, clearPoints } from '../../unit/const';
+ import states from '../../control/states';
+ 
+ const t = setTimeout;
+@@ -18,7 +18,9 @@ export default class Matrix extends React.Component {
+       animateColor: 2,
+       isOver: false,
+       overState: null,
++      floatingScores: [],
+     };
++    this.floatingScoreId = 0;
+   }
+   componentWillReceiveProps(nextProps = {}) {
+     const clears = isClear(nextProps.matrix);
+@@ -29,6 +31,7 @@ export default class Matrix extends React.Component {
+     });
+     if (clears && !this.state.clearLines) {
+       this.clearAnimate(clears);
++      this.addFloatingScore(clears);
+     }
+     if (!clears && overs && !this.state.isOver) {
+       this.over(nextProps);
+@@ -47,7 +50,8 @@ export default class Matrix extends React.Component {
+         (props.cur && props.cur.xy)
+       )
+     ) || this.state.clearLines
+-    || this.state.isOver;
++    || this.state.isOver
++    || nextProps.matrix !== props.matrix;
+   }
+   getResult(props = this.props) {
+     const cur = props.cur;
+@@ -91,6 +95,20 @@ export default class Matrix extends React.Component {
+     }
+     return matrix;
+   }
++  addFloatingScore(clears) {
++    const score = clearPoints[clears.length - 1];
++    const topLine = Math.min(...clears);
++    const id = ++this.floatingScoreId;
++    const newFloatingScore = { id, score, topLine, visible: true };
++    this.setState(prevState => ({
++      floatingScores: [...prevState.floatingScores, newFloatingScore],
++    }));
++    t(() => {
++      this.setState(prevState => ({
++        floatingScores: prevState.floatingScores.filter(fs => fs.id !== id),
++      }));
++    }, 1000);
++  }
+   clearAnimate() {
+     const anima = (callback) => {
+       t(() => {
+@@ -149,19 +167,29 @@ export default class Matrix extends React.Component {
+       matrix = this.getResult();
+     }
+     return (
+-      <div className={style.matrix}>{
+-          matrix.map((p, k1) => (<p key={k1}>
+-            {
+-              p.map((e, k2) => <b
+-                className={classnames({
+-                  c: e === 1,
+-                  d: e === 2,
+-                })}
+-                key={k2}
+-              />)
+-            }
+-          </p>))
+-      }
++      <div className={style.matrix}>
++        {matrix.map((p, k1) => (<p key={k1}>
++          {
++            p.map((e, k2) => <b
++              className={classnames({
++                c: e === 1,
++                d: e === 2,
++              })}
++              key={k2}
++            />)
++          }
++        </p>))}
++        {this.state.floatingScores.map(fs => (
++          <div
++            key={fs.id}
++            className={style.floatingScore}
++            style={{
++              top: `${fs.topLine * 22 + 3}px`,
++            }}
++          >
++            +{fs.score}
++          </div>
++        ))}
+       </div>
+     );
+   }
+diff --git a/src/components/matrix/index.less b/src/components/matrix/index.less
+index 49fbf55..0985fab 100644
+--- a/src/components/matrix/index.less
++++ b/src/components/matrix/index.less
+@@ -2,8 +2,35 @@
+   border:2px solid #000;
+   padding:3px 1px 1px 3px;
+   width:228px;
++  position: relative;
+   p{
+     width:220px;
+     height:22px;
+   }
+-}
+\ No newline at end of file
++  .floatingScore{
++    position: absolute;
++    right: 10px;
++    color: white;
++    font-size: 20px;
++    font-weight: bold;
++    text-shadow: 
++      -2px -2px 0 #000,  
++      2px -2px 0 #000,
++      -2px 2px 0 #000,
++      2px 2px 0 #000;
++    animation: floatUp 1s ease-out forwards;
++    pointer-events: none;
++    z-index: 10;
++  }
++}
++
++@keyframes floatUp {
++  0% {
++    opacity: 1;
++    transform: translateY(0);
++  }
++  100% {
++    opacity: 0;
++    transform: translateY(-30px);
++  }
++}
