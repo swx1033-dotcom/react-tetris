@@ -5,7 +5,7 @@ import propTypes from 'prop-types';
 
 import style from './index.less';
 import { isClear } from '../../unit/';
-import { fillLine, blankLine } from '../../unit/const';
+import { fillLine, blankLine, clearPoints } from '../../unit/const';
 import states from '../../control/states';
 
 const t = setTimeout;
@@ -18,6 +18,7 @@ export default class Matrix extends React.Component {
       animateColor: 2,
       isOver: false,
       overState: null,
+      floatingScores: [],
     };
   }
   componentWillReceiveProps(nextProps = {}) {
@@ -34,7 +35,7 @@ export default class Matrix extends React.Component {
       this.over(nextProps);
     }
   }
-  shouldComponentUpdate(nextProps = {}) { // 使用Immutable 比较两个List 是否相等
+  shouldComponentUpdate(nextProps = {}, nextState) { // 使用Immutable 比较两个List 是否相等
     const props = this.props;
     return !(
       immutable.is(nextProps.matrix, props.matrix) &&
@@ -47,7 +48,9 @@ export default class Matrix extends React.Component {
         (props.cur && props.cur.xy)
       )
     ) || this.state.clearLines
-    || this.state.isOver;
+    || this.state.isOver
+    || (nextState && nextState.floatingScores && nextState.floatingScores.length > 0)
+    || this.state.floatingScores.length > 0;
   }
   getResult(props = this.props) {
     const cur = props.cur;
@@ -91,7 +94,20 @@ export default class Matrix extends React.Component {
     }
     return matrix;
   }
-  clearAnimate() {
+  clearAnimate(clears) {
+    const id = Date.now() + Math.random()
+    const score = clearPoints[clears.length - 1]
+    const avgY = clears.reduce((a, b) => a + b, 0) / clears.length
+    const y = avgY * 22 + 14
+    this.setState(prev => ({
+      floatingScores: [...prev.floatingScores, { id, score, y }],
+    }))
+    t(() => {
+      this.setState(prev => ({
+        floatingScores: prev.floatingScores.filter(s => s.id !== id),
+      }))
+    }, 1000)
+
     const anima = (callback) => {
       t(() => {
         this.setState({
@@ -161,6 +177,15 @@ export default class Matrix extends React.Component {
               />)
             }
           </p>))
+      }
+      {
+        this.state.floatingScores.map(s => (
+          <span
+            key={s.id}
+            className={style.floatingScore}
+            style={{ top: s.y }}
+          >+{s.score}</span>
+        ))
       }
       </div>
     );
