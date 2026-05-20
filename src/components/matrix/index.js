@@ -5,10 +5,13 @@ import propTypes from 'prop-types';
 
 import style from './index.less';
 import { isClear } from '../../unit/';
-import { fillLine, blankLine } from '../../unit/const';
+import { fillLine, blankLine, clearPoints } from '../../unit/const';
 import states from '../../control/states';
 
 const t = setTimeout;
+const rowHeight = 22;
+const colWidth = 22;
+const floatDuration = 1000;
 
 export default class Matrix extends React.Component {
   constructor() {
@@ -18,7 +21,10 @@ export default class Matrix extends React.Component {
       animateColor: 2,
       isOver: false,
       overState: null,
+      floatingScores: [],
     };
+    this.floatId = 0;
+    this.floatTimeouts = [];
   }
   componentWillReceiveProps(nextProps = {}) {
     const clears = isClear(nextProps.matrix);
@@ -28,13 +34,18 @@ export default class Matrix extends React.Component {
       isOver: overs,
     });
     if (clears && !this.state.clearLines) {
+      this.showFloatingScore(clears);
       this.clearAnimate(clears);
     }
     if (!clears && overs && !this.state.isOver) {
       this.over(nextProps);
     }
   }
-  shouldComponentUpdate(nextProps = {}) { // 使用Immutable 比较两个List 是否相等
+  componentWillUnmount() {
+    this.floatTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.floatTimeouts = [];
+  }
+  shouldComponentUpdate(nextProps = {}, nextState = this.state) {
     const props = this.props;
     return !(
       immutable.is(nextProps.matrix, props.matrix) &&
@@ -46,8 +57,11 @@ export default class Matrix extends React.Component {
         (nextProps.cur && nextProps.cur.xy),
         (props.cur && props.cur.xy)
       )
-    ) || this.state.clearLines
-    || this.state.isOver;
+    ) || nextState.clearLines !== this.state.clearLines
+    || nextState.animateColor !== this.state.animateColor
+    || nextState.isOver !== this.state.isOver
+    || nextState.overState !== this.state.overState
+    || nextState.floatingScores !== this.state.floatingScores;
   }
   getResult(props = this.props) {
     const cur = props.cur;
@@ -75,10 +89,10 @@ export default class Matrix extends React.Component {
     } else if (shape) {
       shape.forEach((m, k1) => (
         m.forEach((n, k2) => {
-          if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
+          if (n && xy.get(0) + k1 >= 0) {
             let line = matrix.get(xy.get(0) + k1);
             let color;
-            if (line.get(xy.get(1) + k2) === 1 && !clearLines) { // 矩阵与方块重合
+            if (line.get(xy.get(1) + k2) === 1 && !clearLines) {
               color = 2;
             } else {
               color = 1;
@@ -90,6 +104,43 @@ export default class Matrix extends React.Component {
       ));
     }
     return matrix;
+  }
+  getFloatingScoreStyle(lines, offsetIndex) {
+    const top = ((lines.reduce((sum, line) => sum + line, 0) / lines.length) * rowHeight) + (rowHeight / 2) - (offsetIndex * 10);
+    const left = (colWidth * 10) - 18 - ((offsetIndex % 3) * 18);
+    return {
+      top: `${top}px`,
+      left: `${left}px`,
+    };
+  }
+  setFloatingScoreActive(id) {
+    this.setState(({ floatingScores }) => ({
+      floatingScores: floatingScores.map(item => (
+        item.id === id ? { ...item, active: true } : item
+      )),
+    }));
+  }
+  removeFloatingScore(id) {
+    this.setState(({ floatingScores }) => ({
+      floatingScores: floatingScores.filter(item => item.id !== id),
+    }));
+  }
+  showFloatingScore(lines) {
+    const score = clearPoints[lines.length - 1];
+    const id = this.floatId;
+    this.floatId += 1;
+    const offsetIndex = this.state.floatingScores.length;
+    const floatingScore = {
+      id,
+      score,
+      active: false,
+      style: this.getFloatingScoreStyle(lines, offsetIndex),
+    };
+    this.setState(({ floatingScores }) => ({
+      floatingScores: floatingScores.concat(floatingScore),
+    }));
+    this.floatTimeouts.push(t(() => this.setFloatingScoreActive(id), 20));
+    this.floatTimeouts.push(t(() => this.removeFloatingScore(id), floatDuration));
   }
   clearAnimate() {
     const anima = (callback) => {
@@ -149,7 +200,8 @@ export default class Matrix extends React.Component {
       matrix = this.getResult();
     }
     return (
-      <div className={style.matrix}>{
+      <div className={style.matrix}>
+        {
           matrix.map((p, k1) => (<p key={k1}>
             {
               p.map((e, k2) => <b
@@ -161,7 +213,20 @@ export default class Matrix extends React.Component {
               />)
             }
           </p>))
-      }
+        }
+        {
+          this.state.floatingScores.map(item => (
+            <span
+              className={classnames(style.floatingScore, {
+                [style.floatingScoreActive]: item.active,
+              })}
+              key={item.id}
+              style={item.style}
+            >
+              {`+${item.score}`}
+            </span>
+          ))
+        }
       </div>
     );
   }
