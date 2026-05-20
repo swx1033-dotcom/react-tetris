@@ -5,7 +5,7 @@ import propTypes from 'prop-types';
 
 import style from './index.less';
 import { isClear } from '../../unit/';
-import { fillLine, blankLine } from '../../unit/const';
+import { fillLine, blankLine, clearPoints } from '../../unit/const';
 import states from '../../control/states';
 
 const t = setTimeout;
@@ -18,7 +18,9 @@ export default class Matrix extends React.Component {
       animateColor: 2,
       isOver: false,
       overState: null,
+      scorePopups: [],
     };
+    this.popupId = 0;
   }
   componentWillReceiveProps(nextProps = {}) {
     const clears = isClear(nextProps.matrix);
@@ -92,6 +94,22 @@ export default class Matrix extends React.Component {
     return matrix;
   }
   clearAnimate() {
+    const clears = this.state.clearLines;
+    const points = clearPoints[clears.length - 1];
+    const topLine = Math.min(...clears);
+    const popupId = ++this.popupId;
+
+    this.setState({
+      scorePopups: [
+        ...this.state.scorePopups,
+        {
+          id: popupId,
+          points,
+          topLine,
+        },
+      ],
+    });
+
     const anima = (callback) => {
       t(() => {
         this.setState({
@@ -111,7 +129,12 @@ export default class Matrix extends React.Component {
       anima(() => {
         anima(() => {
           t(() => {
-            states.clearLines(this.props.matrix, this.state.clearLines);
+            states.clearLines(this.props.matrix, clears);
+            t(() => {
+              this.setState((prevState) => ({
+                scorePopups: prevState.scorePopups.filter((p) => p.id !== popupId),
+              }));
+            }, 1000);
           }, 100);
         });
       });
@@ -148,6 +171,7 @@ export default class Matrix extends React.Component {
     } else {
       matrix = this.getResult();
     }
+    const lineHeight = 22;
     return (
       <div className={style.matrix}>{
           matrix.map((p, k1) => (<p key={k1}>
@@ -162,6 +186,17 @@ export default class Matrix extends React.Component {
             }
           </p>))
       }
+      {this.state.scorePopups.map((popup) => (
+        <div
+          key={popup.id}
+          className={style.scorePopup}
+          style={{
+            top: popup.topLine * lineHeight + lineHeight / 2,
+          }}
+        >
+          +{popup.points}
+        </div>
+      ))}
       </div>
     );
   }
