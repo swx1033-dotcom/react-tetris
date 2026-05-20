@@ -5,7 +5,7 @@ import propTypes from 'prop-types';
 
 import style from './index.less';
 import { isClear } from '../../unit/';
-import { fillLine, blankLine } from '../../unit/const';
+import { fillLine, blankLine, clearPoints } from '../../unit/const';
 import states from '../../control/states';
 
 const t = setTimeout;
@@ -18,6 +18,7 @@ export default class Matrix extends React.Component {
       animateColor: 2,
       isOver: false,
       overState: null,
+      floatings: [],
     };
   }
   componentWillReceiveProps(nextProps = {}) {
@@ -29,12 +30,27 @@ export default class Matrix extends React.Component {
     });
     if (clears && !this.state.clearLines) {
       this.clearAnimate(clears);
+      const points = clearPoints[clears.length - 1];
+      const y = clears.reduce((a, b) => a + b, 0) / clears.length;
+      const newFloating = {
+        id: Date.now(),
+        points,
+        top: y * 22,
+      };
+      this.setState(prevState => ({
+        floatings: [...prevState.floatings, newFloating],
+      }));
+      setTimeout(() => {
+        this.setState(prevState => ({
+          floatings: prevState.floatings.filter(f => f.id !== newFloating.id)
+        }));
+      }, 1000);
     }
     if (!clears && overs && !this.state.isOver) {
       this.over(nextProps);
     }
   }
-  shouldComponentUpdate(nextProps = {}) { // 使用Immutable 比较两个List 是否相等
+  shouldComponentUpdate(nextProps = {}, nextState = {}) { // 使用Immutable 比较两个List 是否相等
     const props = this.props;
     return !(
       immutable.is(nextProps.matrix, props.matrix) &&
@@ -47,7 +63,8 @@ export default class Matrix extends React.Component {
         (props.cur && props.cur.xy)
       )
     ) || this.state.clearLines
-    || this.state.isOver;
+    || this.state.isOver
+    || nextState.floatings !== this.state.floatings;
   }
   getResult(props = this.props) {
     const cur = props.cur;
@@ -161,6 +178,21 @@ export default class Matrix extends React.Component {
               />)
             }
           </p>))
+      }
+      {
+        this.state.floatings && this.state.floatings.map(f => (
+          <span
+            key={f.id}
+            className={style.pointsFloat}
+            style={{
+              top: f.top + 'px',
+              left: '110px', // center of 220px width
+              marginLeft: '-20px',
+            }}
+          >
+            +{f.points}
+          </span>
+        ))
       }
       </div>
     );
