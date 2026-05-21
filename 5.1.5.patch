@@ -1,0 +1,27 @@
+diff --git a/src/control/todo/rotate.js b/src/control/todo/rotate.js
+index 1cbda8a339..731cdef1bf 100644
+--- a/src/control/todo/rotate.js
++++ b/src/control/todo/rotate.js
+@@ -26,8 +26,21 @@ const down = (store) => {
+           music.rotate();
+         }
+         const next = cur.rotate();
+-        if (want(next, state.get('matrix'))) {
++        const matrix = state.get('matrix');
++        if (want(next, matrix)) {
+           store.dispatch(actions.moveBlock(next));
++        } else {
++          const offsets = [1, -1, 2, -2];
++          for (let i = 0; i < offsets.length; i++) {
++            const kickedNext = {
++              ...next,
++              xy: [next.xy[0], next.xy[1] + offsets[i]],
++            };
++            if (want(kickedNext, matrix)) {
++              store.dispatch(actions.moveBlock(kickedNext));
++              break;
++            }
++          }
+         }
+       },
+     });
