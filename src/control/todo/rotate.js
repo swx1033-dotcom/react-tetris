@@ -28,6 +28,20 @@ const down = (store) => {
         const next = cur.rotate();
         if (want(next, state.get('matrix'))) {
           store.dispatch(actions.moveBlock(next));
+        } else {
+          const kicks = [
+            [next.xy[0], next.xy[1] + 1],
+            [next.xy[0], next.xy[1] - 1],
+            [next.xy[0], next.xy[1] + 2],
+            [next.xy[0], next.xy[1] - 2],
+          ];
+          for (const kickXy of kicks) {
+            const kickNext = { ...next, xy: kickXy };
+            if (want(kickNext, state.get('matrix'))) {
+              store.dispatch(actions.moveBlock(kickNext));
+              return;
+            }
+          }
         }
       },
     });

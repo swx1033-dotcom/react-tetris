@@ -1,0 +1,25 @@
+diff --git a/src/control/todo/rotate.js b/src/control/todo/rotate.js
+index 1cbda8a339..9330949d3e 100644
+--- a/src/control/todo/rotate.js
++++ b/src/control/todo/rotate.js
+@@ -28,6 +28,20 @@ const down = (store) => {
+         const next = cur.rotate();
+         if (want(next, state.get('matrix'))) {
+           store.dispatch(actions.moveBlock(next));
++        } else {
++          const kicks = [
++            [next.xy[0], next.xy[1] + 1],
++            [next.xy[0], next.xy[1] - 1],
++            [next.xy[0], next.xy[1] + 2],
++            [next.xy[0], next.xy[1] - 2],
++          ];
++          for (const kickXy of kicks) {
++            const kickNext = { ...next, xy: kickXy };
++            if (want(kickNext, state.get('matrix'))) {
++              store.dispatch(actions.moveBlock(kickNext));
++              return;
++            }
++          }
+         }
+       },
+     });
