@@ -13,7 +13,7 @@ const down = (store) => {
       interval: 40,
       callback: (stopDownTrigger) => {
         const state = store.getState();
-        if (state.get('lock')) {
+        if (state.get('lock') || state.get('pause')) {
           return;
         }
         if (music.move) {
@@ -21,10 +21,6 @@ const down = (store) => {
         }
         const cur = state.get('cur');
         if (cur === null) {
-          return;
-        }
-        if (state.get('pause')) {
-          states.pause(false);
           return;
         }
         const next = cur.fall();
@@ -54,10 +50,10 @@ const down = (store) => {
       begin: 200,
       interval: 100,
       callback: () => {
-        if (store.getState().get('lock')) {
+        const state = store.getState();
+        if (state.get('lock') || state.get('pause')) {
           return;
         }
-        const state = store.getState();
         const cur = state.get('cur');
         if (cur) {
           return;

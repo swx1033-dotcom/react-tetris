@@ -11,15 +11,11 @@ const down = (store) => {
     once: true,
     callback: () => {
       const state = store.getState();
-      if (state.get('lock')) {
+      if (state.get('lock') || state.get('pause')) {
         return;
       }
       const cur = state.get('cur');
       if (cur !== null) { // 置底
-        if (state.get('pause')) {
-          states.pause(false);
-          return;
-        }
         if (music.fall) {
           music.fall();
         }

@@ -4,14 +4,19 @@ import actions from '../../actions';
 
 const down = (store) => {
   store.dispatch(actions.keyboard.reset(true));
-  if (store.getState().get('lock')) {
+  const state = store.getState();
+  if (state.get('lock')) {
     return;
   }
-  if (store.getState().get('cur') !== null) {
+  if (state.get('cur') !== null) {
     event.down({
       key: 'r',
       once: true,
       callback: () => {
+        // 如果当前处于暂停状态，先解暂停
+        if (store.getState().get('pause')) {
+          states.pause(false);
+        }
         states.overStart();
       },
     });
@@ -22,6 +27,10 @@ const down = (store) => {
       callback: () => {
         if (store.getState().get('lock')) {
           return;
+        }
+        // 如果当前处于暂停状态，先解暂停
+        if (store.getState().get('pause')) {
+          states.pause(false);
         }
         states.start();
       },

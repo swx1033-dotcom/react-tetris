@@ -12,11 +12,8 @@ const down = (store) => {
       once: true,
       callback: () => {
         const state = store.getState();
-        if (state.get('lock')) {
+        if (state.get('lock') || state.get('pause')) {
           return;
-        }
-        if (state.get('pause')) {
-          states.pause(false);
         }
         const cur = state.get('cur');
         if (cur === null) {
@@ -37,13 +34,13 @@ const down = (store) => {
       begin: 200,
       interval: 100,
       callback: () => {
-        if (store.getState().get('lock')) {
+        const state = store.getState();
+        if (state.get('lock') || state.get('pause')) {
           return;
         }
         if (music.move) {
           music.move();
         }
-        const state = store.getState();
         const cur = state.get('cur');
         if (cur) {
           return;

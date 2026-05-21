@@ -1,0 +1,177 @@
+diff --git a/src/control/todo/down.js b/src/control/todo/down.js
+index b74deea8ac..ac32abe626 100644
+--- a/src/control/todo/down.js
++++ b/src/control/todo/down.js
+@@ -13,7 +13,7 @@ const down = (store) => {
+       interval: 40,
+       callback: (stopDownTrigger) => {
+         const state = store.getState();
+-        if (state.get('lock')) {
++        if (state.get('lock') || state.get('pause')) {
+           return;
+         }
+         if (music.move) {
+@@ -23,10 +23,6 @@ const down = (store) => {
+         if (cur === null) {
+           return;
+         }
+-        if (state.get('pause')) {
+-          states.pause(false);
+-          return;
+-        }
+         const next = cur.fall();
+         if (want(next, state.get('matrix'))) {
+           store.dispatch(actions.moveBlock(next));
+@@ -54,10 +50,10 @@ const down = (store) => {
+       begin: 200,
+       interval: 100,
+       callback: () => {
+-        if (store.getState().get('lock')) {
++        const state = store.getState();
++        if (state.get('lock') || state.get('pause')) {
+           return;
+         }
+-        const state = store.getState();
+         const cur = state.get('cur');
+         if (cur) {
+           return;
+diff --git a/src/control/todo/left.js b/src/control/todo/left.js
+index 718e1b2dba..821521674b 100644
+--- a/src/control/todo/left.js
++++ b/src/control/todo/left.js
+@@ -13,7 +13,7 @@ const down = (store) => {
+     interval: 100,
+     callback: () => {
+       const state = store.getState();
+-      if (state.get('lock')) {
++      if (state.get('lock') || state.get('pause')) {
+         return;
+       }
+       if (music.move) {
+@@ -21,10 +21,6 @@ const down = (store) => {
+       }
+       const cur = state.get('cur');
+       if (cur !== null) {
+-        if (state.get('pause')) {
+-          states.pause(false);
+-          return;
+-        }
+         const next = cur.left();
+         const delay = delays[state.get('speedRun') - 1];
+         let timeStamp;
+diff --git a/src/control/todo/r.js b/src/control/todo/r.js
+index 642e4eb7ea..4c27eed9ea 100644
+--- a/src/control/todo/r.js
++++ b/src/control/todo/r.js
+@@ -4,14 +4,19 @@ import actions from '../../actions';
+ 
+ const down = (store) => {
+   store.dispatch(actions.keyboard.reset(true));
+-  if (store.getState().get('lock')) {
++  const state = store.getState();
++  if (state.get('lock')) {
+     return;
+   }
+-  if (store.getState().get('cur') !== null) {
++  if (state.get('cur') !== null) {
+     event.down({
+       key: 'r',
+       once: true,
+       callback: () => {
++        // 如果当前处于暂停状态，先解暂停
++        if (store.getState().get('pause')) {
++          states.pause(false);
++        }
+         states.overStart();
+       },
+     });
+@@ -23,6 +28,10 @@ const down = (store) => {
+         if (store.getState().get('lock')) {
+           return;
+         }
++        // 如果当前处于暂停状态，先解暂停
++        if (store.getState().get('pause')) {
++          states.pause(false);
++        }
+         states.start();
+       },
+     });
+diff --git a/src/control/todo/right.js b/src/control/todo/right.js
+index 6cec9c1a97..fbb2cd7779 100644
+--- a/src/control/todo/right.js
++++ b/src/control/todo/right.js
+@@ -13,7 +13,7 @@ const down = (store) => {
+     interval: 100,
+     callback: () => {
+       const state = store.getState();
+-      if (state.get('lock')) {
++      if (state.get('lock') || state.get('pause')) {
+         return;
+       }
+       if (music.move) {
+@@ -21,10 +21,6 @@ const down = (store) => {
+       }
+       const cur = state.get('cur');
+       if (cur !== null) {
+-        if (state.get('pause')) {
+-          states.pause(false);
+-          return;
+-        }
+         const next = cur.right();
+         const delay = delays[state.get('speedRun') - 1];
+         let timeStamp;
+diff --git a/src/control/todo/rotate.js b/src/control/todo/rotate.js
+index 1cbda8a339..178d2b6d08 100644
+--- a/src/control/todo/rotate.js
++++ b/src/control/todo/rotate.js
+@@ -12,12 +12,9 @@ const down = (store) => {
+       once: true,
+       callback: () => {
+         const state = store.getState();
+-        if (state.get('lock')) {
++        if (state.get('lock') || state.get('pause')) {
+           return;
+         }
+-        if (state.get('pause')) {
+-          states.pause(false);
+-        }
+         const cur = state.get('cur');
+         if (cur === null) {
+           return;
+@@ -37,13 +34,13 @@ const down = (store) => {
+       begin: 200,
+       interval: 100,
+       callback: () => {
+-        if (store.getState().get('lock')) {
++        const state = store.getState();
++        if (state.get('lock') || state.get('pause')) {
+           return;
+         }
+         if (music.move) {
+           music.move();
+         }
+-        const state = store.getState();
+         const cur = state.get('cur');
+         if (cur) {
+           return;
+diff --git a/src/control/todo/space.js b/src/control/todo/space.js
+index 700659db0d..575aa24132 100644
+--- a/src/control/todo/space.js
++++ b/src/control/todo/space.js
+@@ -11,15 +11,11 @@ const down = (store) => {
+     once: true,
+     callback: () => {
+       const state = store.getState();
+-      if (state.get('lock')) {
++      if (state.get('lock') || state.get('pause')) {
+         return;
+       }
+       const cur = state.get('cur');
+       if (cur !== null) { // 置底
+-        if (state.get('pause')) {
+-          states.pause(false);
+-          return;
+-        }
+         if (music.fall) {
+           music.fall();
+         }
