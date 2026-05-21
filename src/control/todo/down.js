@@ -16,15 +16,14 @@ const down = (store) => {
         if (state.get('lock')) {
           return;
         }
+        if (state.get('pause')) {
+          return;
+        }
         if (music.move) {
           music.move();
         }
         const cur = state.get('cur');
         if (cur === null) {
-          return;
-        }
-        if (state.get('pause')) {
-          states.pause(false);
           return;
         }
         const next = cur.fall();
@@ -37,7 +36,7 @@ const down = (store) => {
           const xy = cur.xy;
           shape.forEach((m, k1) => (
             m.forEach((n, k2) => {
-              if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
+              if (n && xy.get(0) + k1 >= 0) {
                 let line = matrix.get(xy.get(0) + k1);
                 line = line.set(xy.get(1) + k2, 1);
                 matrix = matrix.set(xy.get(0) + k1, line);
@@ -79,7 +78,6 @@ const up = (store) => {
     key: 'down',
   });
 };
-
 
 export default {
   down,

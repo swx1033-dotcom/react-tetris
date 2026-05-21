@@ -5,7 +5,7 @@ import propTypes from 'prop-types';
 import style from './index.less';
 import Button from './button';
 import store from '../../store';
-import todo from '../../control/todo';
+import todo, { controlDown, controlUp } from '../../control/todo';
 import { i18n, lan } from '../../unit/const';
 
 export default class Keyboard extends React.Component {
@@ -45,28 +45,27 @@ export default class Keyboard extends React.Component {
         if (touchEventCatch[key] === true) {
           return;
         }
-        todo[key].down(store);
-        mouseDownEventCatch[key] = true;
+        mouseDownEventCatch[key] = controlDown(key, store);
       }, true);
       this[`dom_${key}`].dom.addEventListener('mouseup', () => {
         if (touchEventCatch[key] === true) {
           touchEventCatch[key] = false;
           return;
         }
-        todo[key].up(store);
+        controlUp(key, store);
         mouseDownEventCatch[key] = false;
       }, true);
       this[`dom_${key}`].dom.addEventListener('mouseout', () => {
         if (mouseDownEventCatch[key] === true) {
-          todo[key].up(store);
+          controlUp(key, store);
         }
       }, true);
       this[`dom_${key}`].dom.addEventListener('touchstart', () => {
         touchEventCatch[key] = true;
-        todo[key].down(store);
+        controlDown(key, store);
       }, true);
       this[`dom_${key}`].dom.addEventListener('touchend', () => {
-        todo[key].up(store);
+        controlUp(key, store);
       }, true);
     });
   }

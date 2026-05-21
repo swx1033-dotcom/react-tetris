@@ -1,0 +1,320 @@
+diff --git a/src/components/keyboard/index.js b/src/components/keyboard/index.js
+index fd608773fd..d4ab614d70 100644
+--- a/src/components/keyboard/index.js
++++ b/src/components/keyboard/index.js
+@@ -5,7 +5,7 @@ import propTypes from 'prop-types';
+ import style from './index.less';
+ import Button from './button';
+ import store from '../../store';
+-import todo from '../../control/todo';
++import todo, { controlDown, controlUp } from '../../control/todo';
+ import { i18n, lan } from '../../unit/const';
+ 
+ export default class Keyboard extends React.Component {
+@@ -45,28 +45,27 @@ export default class Keyboard extends React.Component {
+         if (touchEventCatch[key] === true) {
+           return;
+         }
+-        todo[key].down(store);
+-        mouseDownEventCatch[key] = true;
++        mouseDownEventCatch[key] = controlDown(key, store);
+       }, true);
+       this[`dom_${key}`].dom.addEventListener('mouseup', () => {
+         if (touchEventCatch[key] === true) {
+           touchEventCatch[key] = false;
+           return;
+         }
+-        todo[key].up(store);
++        controlUp(key, store);
+         mouseDownEventCatch[key] = false;
+       }, true);
+       this[`dom_${key}`].dom.addEventListener('mouseout', () => {
+         if (mouseDownEventCatch[key] === true) {
+-          todo[key].up(store);
++          controlUp(key, store);
+         }
+       }, true);
+       this[`dom_${key}`].dom.addEventListener('touchstart', () => {
+         touchEventCatch[key] = true;
+-        todo[key].down(store);
++        controlDown(key, store);
+       }, true);
+       this[`dom_${key}`].dom.addEventListener('touchend', () => {
+-        todo[key].up(store);
++        controlUp(key, store);
+       }, true);
+     });
+   }
+diff --git a/src/control/index.js b/src/control/index.js
+index 25d1c455b4..9b6f82c003 100644
+--- a/src/control/index.js
++++ b/src/control/index.js
+@@ -1,5 +1,5 @@
+ import store from '../store';
+-import todo from './todo';
++import { controlDown, controlUp } from './todo';
+ 
+ const keyboard = {
+   37: 'left',
+@@ -24,8 +24,9 @@ const keyDown = (e) => {
+   if (type === keydownActive) {
+     return;
+   }
+-  keydownActive = type;
+-  todo[type].down(store);
++  if (controlDown(type, store)) {
++    keydownActive = type;
++  }
+ };
+ 
+ const keyUp = (e) => {
+@@ -36,9 +37,8 @@ const keyUp = (e) => {
+   if (type === keydownActive) {
+     keydownActive = '';
+   }
+-  todo[type].up(store);
++  controlUp(type, store);
+ };
+ 
+ document.addEventListener('keydown', keyDown, true);
+ document.addEventListener('keyup', keyUp, true);
+-
+diff --git a/src/control/todo/down.js b/src/control/todo/down.js
+index b74deea8ac..67d2fcc750 100644
+--- a/src/control/todo/down.js
++++ b/src/control/todo/down.js
+@@ -16,6 +16,9 @@ const down = (store) => {
+         if (state.get('lock')) {
+           return;
+         }
++        if (state.get('pause')) {
++          return;
++        }
+         if (music.move) {
+           music.move();
+         }
+@@ -23,10 +26,6 @@ const down = (store) => {
+         if (cur === null) {
+           return;
+         }
+-        if (state.get('pause')) {
+-          states.pause(false);
+-          return;
+-        }
+         const next = cur.fall();
+         if (want(next, state.get('matrix'))) {
+           store.dispatch(actions.moveBlock(next));
+@@ -37,7 +36,7 @@ const down = (store) => {
+           const xy = cur.xy;
+           shape.forEach((m, k1) => (
+             m.forEach((n, k2) => {
+-              if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
++              if (n && xy.get(0) + k1 >= 0) {
+                 let line = matrix.get(xy.get(0) + k1);
+                 line = line.set(xy.get(1) + k2, 1);
+                 matrix = matrix.set(xy.get(0) + k1, line);
+@@ -80,7 +79,6 @@ const up = (store) => {
+   });
+ };
+ 
+-
+ export default {
+   down,
+   up,
+diff --git a/src/control/todo/index.js b/src/control/todo/index.js
+index ed3995c9b9..7ca90b387d 100644
+--- a/src/control/todo/index.js
++++ b/src/control/todo/index.js
+@@ -7,7 +7,7 @@ import s from './s';
+ import r from './r';
+ import p from './p';
+ 
+-export default {
++const todo = {
+   left,
+   down,
+   rotate,
+@@ -17,3 +17,38 @@ export default {
+   p,
+   s,
+ };
++
++const pauseBlocked = {
++  left: true,
++  down: true,
++  rotate: true,
++  right: true,
++  space: true,
++};
++
++const activeTodo = {};
++
++const isPauseBlocked = (type, store) => {
++  const state = store.getState();
++  return pauseBlocked[type] === true && state.get('pause') === true && state.get('cur') !== null;
++};
++
++export const controlDown = (type, store) => {
++  if (!todo[type] || isPauseBlocked(type, store)) {
++    return false;
++  }
++  activeTodo[type] = true;
++  todo[type].down(store);
++  return true;
++};
++
++export const controlUp = (type, store) => {
++  if (!todo[type] || activeTodo[type] !== true) {
++    return false;
++  }
++  activeTodo[type] = false;
++  todo[type].up(store);
++  return true;
++};
++
++export default todo;
+diff --git a/src/control/todo/left.js b/src/control/todo/left.js
+index 718e1b2dba..49339c85b1 100644
+--- a/src/control/todo/left.js
++++ b/src/control/todo/left.js
+@@ -16,15 +16,14 @@ const down = (store) => {
+       if (state.get('lock')) {
+         return;
+       }
+-      if (music.move) {
+-        music.move();
+-      }
+       const cur = state.get('cur');
+       if (cur !== null) {
+         if (state.get('pause')) {
+-          states.pause(false);
+           return;
+         }
++        if (music.move) {
++          music.move();
++        }
+         const next = cur.left();
+         const delay = delays[state.get('speedRun') - 1];
+         let timeStamp;
+@@ -33,7 +32,7 @@ const down = (store) => {
+           store.dispatch(actions.moveBlock(next));
+           timeStamp = next.timeStamp;
+         } else {
+-          cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10); // 真实移动delay多一点，碰壁delay少一点
++          cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10);
+           store.dispatch(actions.moveBlock(cur));
+           timeStamp = cur.timeStamp;
+         }
+diff --git a/src/control/todo/r.js b/src/control/todo/r.js
+index 642e4eb7ea..da192399b8 100644
+--- a/src/control/todo/r.js
++++ b/src/control/todo/r.js
+@@ -2,6 +2,12 @@ import event from '../../unit/event';
+ import states from '../states';
+ import actions from '../../actions';
+ 
++const resumeFromPause = (store) => {
++  if (store.getState().get('pause')) {
++    states.pause(false);
++  }
++};
++
+ const down = (store) => {
+   store.dispatch(actions.keyboard.reset(true));
+   if (store.getState().get('lock')) {
+@@ -12,6 +18,10 @@ const down = (store) => {
+       key: 'r',
+       once: true,
+       callback: () => {
++        if (store.getState().get('lock')) {
++          return;
++        }
++        resumeFromPause(store);
+         states.overStart();
+       },
+     });
+@@ -23,6 +33,7 @@ const down = (store) => {
+         if (store.getState().get('lock')) {
+           return;
+         }
++        resumeFromPause(store);
+         states.start();
+       },
+     });
+diff --git a/src/control/todo/right.js b/src/control/todo/right.js
+index 6cec9c1a97..aff768ffc0 100644
+--- a/src/control/todo/right.js
++++ b/src/control/todo/right.js
+@@ -16,15 +16,14 @@ const down = (store) => {
+       if (state.get('lock')) {
+         return;
+       }
+-      if (music.move) {
+-        music.move();
+-      }
+       const cur = state.get('cur');
+       if (cur !== null) {
+         if (state.get('pause')) {
+-          states.pause(false);
+           return;
+         }
++        if (music.move) {
++          music.move();
++        }
+         const next = cur.right();
+         const delay = delays[state.get('speedRun') - 1];
+         let timeStamp;
+@@ -33,7 +32,7 @@ const down = (store) => {
+           store.dispatch(actions.moveBlock(next));
+           timeStamp = next.timeStamp;
+         } else {
+-          cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10); // 真实移动delay多一点，碰壁delay少一点
++          cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10);
+           store.dispatch(actions.moveBlock(cur));
+           timeStamp = cur.timeStamp;
+         }
+diff --git a/src/control/todo/rotate.js b/src/control/todo/rotate.js
+index 1cbda8a339..5d097bb8df 100644
+--- a/src/control/todo/rotate.js
++++ b/src/control/todo/rotate.js
+@@ -1,7 +1,6 @@
+ import { want } from '../../unit/';
+ import event from '../../unit/event';
+ import actions from '../../actions';
+-import states from '../states';
+ import { music } from '../../unit/music';
+ 
+ const down = (store) => {
+@@ -16,7 +15,7 @@ const down = (store) => {
+           return;
+         }
+         if (state.get('pause')) {
+-          states.pause(false);
++          return;
+         }
+         const cur = state.get('cur');
+         if (cur === null) {
+diff --git a/src/control/todo/space.js b/src/control/todo/space.js
+index 700659db0d..acb3212d8c 100644
+--- a/src/control/todo/space.js
++++ b/src/control/todo/space.js
+@@ -15,9 +15,8 @@ const down = (store) => {
+         return;
+       }
+       const cur = state.get('cur');
+-      if (cur !== null) { // 置底
++      if (cur !== null) {
+         if (state.get('pause')) {
+-          states.pause(false);
+           return;
+         }
+         if (music.fall) {
+@@ -36,7 +35,7 @@ const down = (store) => {
+         const xy = bottom.xy;
+         shape.forEach((m, k1) => (
+           m.forEach((n, k2) => {
+-            if (n && xy[0] + k1 >= 0) { // 竖坐标可以为负
++            if (n && xy[0] + k1 >= 0) {
+               let line = matrix.get(xy[0] + k1);
+               line = line.set(xy[1] + k2, 1);
+               matrix = matrix.set(xy[0] + k1, line);

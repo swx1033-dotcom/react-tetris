@@ -1,7 +1,6 @@
 import { want } from '../../unit/';
 import event from '../../unit/event';
 import actions from '../../actions';
-import states from '../states';
 import { music } from '../../unit/music';
 
 const down = (store) => {
@@ -16,7 +15,7 @@ const down = (store) => {
           return;
         }
         if (state.get('pause')) {
-          states.pause(false);
+          return;
         }
         const cur = state.get('cur');
         if (cur === null) {

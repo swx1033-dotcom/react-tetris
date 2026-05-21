@@ -2,6 +2,12 @@ import event from '../../unit/event';
 import states from '../states';
 import actions from '../../actions';
 
+const resumeFromPause = (store) => {
+  if (store.getState().get('pause')) {
+    states.pause(false);
+  }
+};
+
 const down = (store) => {
   store.dispatch(actions.keyboard.reset(true));
   if (store.getState().get('lock')) {
@@ -12,6 +18,10 @@ const down = (store) => {
       key: 'r',
       once: true,
       callback: () => {
+        if (store.getState().get('lock')) {
+          return;
+        }
+        resumeFromPause(store);
         states.overStart();
       },
     });
@@ -23,6 +33,7 @@ const down = (store) => {
         if (store.getState().get('lock')) {
           return;
         }
+        resumeFromPause(store);
         states.start();
       },
     });

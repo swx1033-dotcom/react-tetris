@@ -1,5 +1,5 @@
 import store from '../store';
-import todo from './todo';
+import { controlDown, controlUp } from './todo';
 
 const keyboard = {
   37: 'left',
@@ -24,8 +24,9 @@ const keyDown = (e) => {
   if (type === keydownActive) {
     return;
   }
-  keydownActive = type;
-  todo[type].down(store);
+  if (controlDown(type, store)) {
+    keydownActive = type;
+  }
 };
 
 const keyUp = (e) => {
@@ -36,9 +37,8 @@ const keyUp = (e) => {
   if (type === keydownActive) {
     keydownActive = '';
   }
-  todo[type].up(store);
+  controlUp(type, store);
 };
 
 document.addEventListener('keydown', keyDown, true);
 document.addEventListener('keyup', keyUp, true);
-

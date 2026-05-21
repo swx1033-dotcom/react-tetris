@@ -16,14 +16,13 @@ const down = (store) => {
       if (state.get('lock')) {
         return;
       }
-      if (music.move) {
-        music.move();
-      }
       const cur = state.get('cur');
       if (cur !== null) {
         if (state.get('pause')) {
-          states.pause(false);
           return;
+        }
+        if (music.move) {
+          music.move();
         }
         const next = cur.right();
         const delay = delays[state.get('speedRun') - 1];
@@ -33,7 +32,7 @@ const down = (store) => {
           store.dispatch(actions.moveBlock(next));
           timeStamp = next.timeStamp;
         } else {
-          cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10); // 真实移动delay多一点，碰壁delay少一点
+          cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10);
           store.dispatch(actions.moveBlock(cur));
           timeStamp = cur.timeStamp;
         }
