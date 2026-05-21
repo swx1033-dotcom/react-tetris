@@ -4,6 +4,22 @@ import actions from '../../actions';
 import states from '../states';
 import { music } from '../../unit/music';
 
+const getRotateBlock = (cur, matrix) => {
+  const rotated = cur.rotate();
+  const offsets = [0, 1, -1, 2, -2];
+  for (let i = 0; i < offsets.length; i++) {
+    const offset = offsets[i];
+    const next = offset === 0 ? rotated : {
+      ...rotated,
+      xy: [rotated.xy[0], rotated.xy[1] + offset],
+    };
+    if (want(next, matrix)) {
+      return next;
+    }
+  }
+  return null;
+};
+
 const down = (store) => {
   store.dispatch(actions.keyboard.rotate(true));
   if (store.getState().get('cur') !== null) {
@@ -25,8 +41,8 @@ const down = (store) => {
         if (music.rotate) {
           music.rotate();
         }
-        const next = cur.rotate();
-        if (want(next, state.get('matrix'))) {
+        const next = getRotateBlock(cur, state.get('matrix'));
+        if (next) {
           store.dispatch(actions.moveBlock(next));
         }
       },
