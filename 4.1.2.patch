@@ -1,0 +1,106 @@
+diff --git a/src/components/matrix/index.js b/src/components/matrix/index.js
+index c4b1d2daf9..0ee8a61655 100644
+--- a/src/components/matrix/index.js
++++ b/src/components/matrix/index.js
+@@ -4,12 +4,42 @@ import classnames from 'classnames';
+ import propTypes from 'prop-types';
+ 
+ import style from './index.less';
+-import { isClear } from '../../unit/';
++import { isClear, want } from '../../unit/';
+ import { fillLine, blankLine } from '../../unit/const';
+ import states from '../../control/states';
+ 
+ const t = setTimeout;
+ 
++export const getDropPosition = (board, piece, position) => {
++  if (!piece) return null;
++  
++  // Normalize position to [y, x] array
++  let pos;
++  if (position) {
++    pos = typeof position.get === 'function' ? [position.get(0), position.get(1)] : position;
++  } else {
++    pos = typeof piece.xy.get === 'function' ? [piece.xy.get(0), piece.xy.get(1)] : piece.xy;
++  }
++
++  let index = 0;
++  let bottom = piece.fall(index);
++  bottom.xy = [pos[0] + index, pos[1]];
++  
++  if (!want(bottom, board)) {
++    return null;
++  }
++  
++  while (want(bottom, board)) {
++    index++;
++    bottom = piece.fall(index);
++    bottom.xy = [pos[0] + index, pos[1]];
++  }
++  
++  const finalPiece = piece.fall(index - 1);
++  finalPiece.xy = [pos[0] + index - 1, pos[1]];
++  return finalPiece;
++};
++
+ export default class Matrix extends React.Component {
+   constructor() {
+     super();
+@@ -73,6 +103,21 @@ export default class Matrix extends React.Component {
+         ]));
+       });
+     } else if (shape) {
++      const dropPos = getDropPosition(matrix, cur, xy);
++      if (dropPos) {
++        dropPos.shape.forEach((m, k1) => (
++          m.forEach((n, k2) => {
++            if (n && dropPos.xy[0] + k1 >= 0) {
++              let line = matrix.get(dropPos.xy[0] + k1);
++              if (line && line.get(dropPos.xy[1] + k2) === 0) {
++                line = line.set(dropPos.xy[1] + k2, 3);
++                matrix = matrix.set(dropPos.xy[0] + k1, line);
++              }
++            }
++          })
++        ));
++      }
++
+       shape.forEach((m, k1) => (
+         m.forEach((n, k2) => {
+           if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
+@@ -156,6 +201,7 @@ export default class Matrix extends React.Component {
+                 className={classnames({
+                   c: e === 1,
+                   d: e === 2,
++                  e: e === 3,
+                 })}
+                 key={k2}
+               />)
+diff --git a/src/components/matrix/index.less b/src/components/matrix/index.less
+index 49fbf55975..31e1c0f622 100644
+--- a/src/components/matrix/index.less
++++ b/src/components/matrix/index.less
+@@ -6,4 +6,4 @@
+     width:220px;
+     height:22px;
+   }
+-}
+\ No newline at end of file
++}
+diff --git a/src/containers/index.less b/src/containers/index.less
+index ed7e1d45c8..9a7d3e7bd9 100644
+--- a/src/containers/index.less
++++ b/src/containers/index.less
+@@ -83,6 +83,12 @@ body{
+           background: #560000;
+         }
+       }
++      &.e {
++        border-color: rgba(0, 0, 0, 0.4);
++        &:after {
++          background: rgba(0, 0, 0, 0.4);
++        }
++      }
+     }
+   }
+ }

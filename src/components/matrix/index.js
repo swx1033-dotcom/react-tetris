@@ -4,11 +4,41 @@ import classnames from 'classnames';
 import propTypes from 'prop-types';
 
 import style from './index.less';
-import { isClear } from '../../unit/';
+import { isClear, want } from '../../unit/';
 import { fillLine, blankLine } from '../../unit/const';
 import states from '../../control/states';
 
 const t = setTimeout;
+
+export const getDropPosition = (board, piece, position) => {
+  if (!piece) return null;
+  
+  // Normalize position to [y, x] array
+  let pos;
+  if (position) {
+    pos = typeof position.get === 'function' ? [position.get(0), position.get(1)] : position;
+  } else {
+    pos = typeof piece.xy.get === 'function' ? [piece.xy.get(0), piece.xy.get(1)] : piece.xy;
+  }
+
+  let index = 0;
+  let bottom = piece.fall(index);
+  bottom.xy = [pos[0] + index, pos[1]];
+  
+  if (!want(bottom, board)) {
+    return null;
+  }
+  
+  while (want(bottom, board)) {
+    index++;
+    bottom = piece.fall(index);
+    bottom.xy = [pos[0] + index, pos[1]];
+  }
+  
+  const finalPiece = piece.fall(index - 1);
+  finalPiece.xy = [pos[0] + index - 1, pos[1]];
+  return finalPiece;
+};
 
 export default class Matrix extends React.Component {
   constructor() {
@@ -73,6 +103,21 @@ export default class Matrix extends React.Component {
         ]));
       });
     } else if (shape) {
+      const dropPos = getDropPosition(matrix, cur, xy);
+      if (dropPos) {
+        dropPos.shape.forEach((m, k1) => (
+          m.forEach((n, k2) => {
+            if (n && dropPos.xy[0] + k1 >= 0) {
+              let line = matrix.get(dropPos.xy[0] + k1);
+              if (line && line.get(dropPos.xy[1] + k2) === 0) {
+                line = line.set(dropPos.xy[1] + k2, 3);
+                matrix = matrix.set(dropPos.xy[0] + k1, line);
+              }
+            }
+          })
+        ));
+      }
+
       shape.forEach((m, k1) => (
         m.forEach((n, k2) => {
           if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
@@ -156,6 +201,7 @@ export default class Matrix extends React.Component {
                 className={classnames({
                   c: e === 1,
                   d: e === 2,
+                  e: e === 3,
                 })}
                 key={k2}
               />)
