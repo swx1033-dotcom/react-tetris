@@ -17,6 +17,7 @@ const down = (store) => {
         }
         if (state.get('pause')) {
           states.pause(false);
+          return;
         }
         const cur = state.get('cur');
         if (cur === null) {

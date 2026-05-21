@@ -41,11 +41,14 @@ export default class Keyboard extends React.Component {
     }, true);
 
     Object.keys(todo).forEach((key) => {
+      if (key === 'dispatchWithGuard') {
+        return;
+      }
       this[`dom_${key}`].dom.addEventListener('mousedown', () => {
         if (touchEventCatch[key] === true) {
           return;
         }
-        todo[key].down(store);
+        todo.dispatchWithGuard(store, key);
         mouseDownEventCatch[key] = true;
       }, true);
       this[`dom_${key}`].dom.addEventListener('mouseup', () => {
@@ -63,7 +66,7 @@ export default class Keyboard extends React.Component {
       }, true);
       this[`dom_${key}`].dom.addEventListener('touchstart', () => {
         touchEventCatch[key] = true;
-        todo[key].down(store);
+        todo.dispatchWithGuard(store, key);
       }, true);
       this[`dom_${key}`].dom.addEventListener('touchend', () => {
         todo[key].up(store);

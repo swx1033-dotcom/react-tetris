@@ -16,14 +16,14 @@ const down = (store) => {
       if (state.get('lock')) {
         return;
       }
-      if (music.move) {
-        music.move();
-      }
       const cur = state.get('cur');
       if (cur !== null) {
         if (state.get('pause')) {
           states.pause(false);
           return;
+        }
+        if (music.move) {
+          music.move();
         }
         const next = cur.left();
         const delay = delays[state.get('speedRun') - 1];

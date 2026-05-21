@@ -25,7 +25,7 @@ const keyDown = (e) => {
     return;
   }
   keydownActive = type;
-  todo[type].down(store);
+  todo.dispatchWithGuard(store, type);
 };
 
 const keyUp = (e) => {
