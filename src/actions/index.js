@@ -108,6 +108,26 @@ function focus(data) {
   };
 }
 
+function saveState(data) {
+  return {
+    type: reducerType.SAVE_STATE,
+    data,
+  };
+}
+
+function undo() {
+  return {
+    type: reducerType.UNDO,
+  };
+}
+
+function keyboardUndo(data) {
+  return {
+    type: reducerType.KEY_UNDO,
+    data,
+  };
+}
+
 export default {
   nextBlock,
   moveBlock,
@@ -125,4 +145,7 @@ export default {
   keyboard,
   music,
   focus,
+  saveState,
+  undo,
+  keyboardUndo,
 };

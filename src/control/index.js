@@ -17,6 +17,17 @@ let keydownActive;
 const boardKeys = Object.keys(keyboard).map(e => parseInt(e, 10));
 
 const keyDown = (e) => {
+  // 处理 Ctrl+Z
+  if ((e.ctrlKey || e.metaKey) && e.keyCode === 90) {
+    e.preventDefault();
+    if (keydownActive === 'undo') {
+      return;
+    }
+    keydownActive = 'undo';
+    todo.undo.down(store);
+    return;
+  }
+  
   if (e.metaKey === true || boardKeys.indexOf(e.keyCode) === -1) {
     return;
   }
@@ -29,6 +40,16 @@ const keyDown = (e) => {
 };
 
 const keyUp = (e) => {
+  // 处理 Ctrl+Z 释放
+  if ((e.ctrlKey || e.metaKey) && e.keyCode === 90) {
+    e.preventDefault();
+    if (keydownActive === 'undo') {
+      keydownActive = '';
+    }
+    todo.undo.up(store);
+    return;
+  }
+  
   if (e.metaKey === true || boardKeys.indexOf(e.keyCode) === -1) {
     return;
   }

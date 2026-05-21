@@ -30,6 +30,10 @@ const down = (store) => {
         const next = cur.fall();
         if (want(next, state.get('matrix'))) {
           store.dispatch(actions.moveBlock(next));
+          // 保存下移后的状态
+          setTimeout(() => {
+            states.saveGameState();
+          }, 0);
           states.auto();
         } else {
           let matrix = state.get('matrix');

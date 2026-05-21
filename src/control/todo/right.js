@@ -32,6 +32,10 @@ const down = (store) => {
           next.timeStamp += parseInt(delay, 10);
           store.dispatch(actions.moveBlock(next));
           timeStamp = next.timeStamp;
+          // 保存右移后的状态
+          setTimeout(() => {
+            states.saveGameState();
+          }, 0);
         } else {
           cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10); // 真实移动delay多一点，碰壁delay少一点
           store.dispatch(actions.moveBlock(cur));

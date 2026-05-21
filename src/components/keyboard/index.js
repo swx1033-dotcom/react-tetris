@@ -159,6 +159,15 @@ export default class Keyboard extends React.Component {
           active={keyboard.get('pause')}
           ref={(c) => { this.dom_p = c; }}
         />
+        <Button
+          color="yellow"
+          size="s2"
+          top={90}
+          left={16}
+          label={`${i18n.undo[lan]}(Ctrl+Z)`}
+          active={keyboard.get('undo')}
+          ref={(c) => { this.dom_undo = c; }}
+        />
       </div>
     );
   }

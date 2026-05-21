@@ -28,6 +28,10 @@ const down = (store) => {
         const next = cur.rotate();
         if (want(next, state.get('matrix'))) {
           store.dispatch(actions.moveBlock(next));
+          // 保存旋转后的状态
+          setTimeout(() => {
+            states.saveGameState();
+          }, 0);
         }
       },
     });

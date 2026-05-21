@@ -1,10 +1,42 @@
-import { List } from 'immutable';
+import { List, Map } from 'immutable';
 import store from '../store';
 import { want, isClear, isOver } from '../unit/';
 import actions from '../actions';
 import { speeds, blankLine, blankMatrix, clearPoints, eachLines } from '../unit/const';
 import { music } from '../unit/music';
 
+
+// 保存游戏状态的辅助函数
+const saveGameState = () => {
+  const state = store.getState();
+  const cur = state.get('cur');
+  
+  // 保存当前游戏状态
+  const gameState = Map({
+    pause: state.get('pause'),
+    matrix: state.get('matrix'),
+    next: state.get('next'),
+    cur: cur ? {
+      type: cur.type,
+      xy: cur.xy,
+      shape: cur.shape,
+      rotateIndex: cur.rotateIndex,
+      timeStamp: cur.timeStamp,
+    } : null,
+    startLines: state.get('startLines'),
+    points: state.get('points'),
+    max: state.get('max'),
+    speedStart: state.get('speedStart'),
+    speedRun: state.get('speedRun'),
+    lock: state.get('lock'),
+    clearLines: state.get('clearLines'),
+    reset: state.get('reset'),
+    drop: state.get('drop'),
+    focus: state.get('focus'),
+  });
+  
+  store.dispatch(actions.saveState(gameState));
+};
 
 const getStartMatrix = (startLines) => { // 生成startLines
   const getLine = (min, max) => { // 返回标亮个数在min~max之间一行方块, (包含边界)
@@ -40,6 +72,7 @@ const getStartMatrix = (startLines) => { // 生成startLines
 const states = {
   // 自动下落setTimeout变量
   fallInterval: null,
+  saveGameState,
 
   // 游戏开始
   start: () => {
@@ -54,6 +87,10 @@ const states = {
     store.dispatch(actions.matrix(startMatrix));
     store.dispatch(actions.moveBlock({ type: state.get('next') }));
     store.dispatch(actions.nextBlock());
+    // 保存初始状态
+    setTimeout(() => {
+      saveGameState();
+    }, 0);
     states.auto();
   },
 
@@ -121,6 +158,10 @@ const states = {
       store.dispatch(actions.lock(false));
       store.dispatch(actions.moveBlock({ type: store.getState().get('next') }));
       store.dispatch(actions.nextBlock());
+      // 保存新方块出现后的状态
+      setTimeout(() => {
+        saveGameState();
+      }, 0);
       states.auto();
     }, 100);
   },
@@ -172,6 +213,10 @@ const states = {
     let speedNow = state.get('speedStart') + speedAdd;
     speedNow = speedNow > 6 ? 6 : speedNow;
     store.dispatch(actions.speedRun(speedNow));
+    // 保存消除行后的状态
+    setTimeout(() => {
+      saveGameState();
+    }, 0);
   },
 
   // 游戏结束, 触发动画

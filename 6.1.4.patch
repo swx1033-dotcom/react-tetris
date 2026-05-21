@@ -1,0 +1,334 @@
+diff --git a/i18n.json b/i18n.json
+index 5cb7e3b87d..608537d61a 100644
+--- a/i18n.json
++++ b/i18n.json
+@@ -121,6 +121,12 @@
+       "en": "Drop",
+       "fr": "Tomber",
+       "fa": "سقوط"
++    },
++    "undo": {
++      "cn": "撤销",
++      "en": "Undo",
++      "fr": "Annuler",
++      "fa": "بازگشت"
+     }
+   }
+ }
+diff --git a/src/actions/index.js b/src/actions/index.js
+index 4490c4bee6..c96b959e5f 100644
+--- a/src/actions/index.js
++++ b/src/actions/index.js
+@@ -108,6 +108,26 @@ function focus(data) {
+   };
+ }
+ 
++function saveState(data) {
++  return {
++    type: reducerType.SAVE_STATE,
++    data,
++  };
++}
++
++function undo() {
++  return {
++    type: reducerType.UNDO,
++  };
++}
++
++function keyboardUndo(data) {
++  return {
++    type: reducerType.KEY_UNDO,
++    data,
++  };
++}
++
+ export default {
+   nextBlock,
+   moveBlock,
+@@ -125,4 +145,7 @@ export default {
+   keyboard,
+   music,
+   focus,
++  saveState,
++  undo,
++  keyboardUndo,
+ };
+diff --git a/src/components/keyboard/index.js b/src/components/keyboard/index.js
+index fd608773fd..8106ab95ea 100644
+--- a/src/components/keyboard/index.js
++++ b/src/components/keyboard/index.js
+@@ -159,6 +159,15 @@ export default class Keyboard extends React.Component {
+           active={keyboard.get('pause')}
+           ref={(c) => { this.dom_p = c; }}
+         />
++        <Button
++          color="yellow"
++          size="s2"
++          top={90}
++          left={16}
++          label={`${i18n.undo[lan]}(Ctrl+Z)`}
++          active={keyboard.get('undo')}
++          ref={(c) => { this.dom_undo = c; }}
++        />
+       </div>
+     );
+   }
+diff --git a/src/control/index.js b/src/control/index.js
+index 25d1c455b4..b73d4d4a9f 100644
+--- a/src/control/index.js
++++ b/src/control/index.js
+@@ -17,6 +17,17 @@ let keydownActive;
+ const boardKeys = Object.keys(keyboard).map(e => parseInt(e, 10));
+ 
+ const keyDown = (e) => {
++  // 处理 Ctrl+Z
++  if ((e.ctrlKey || e.metaKey) && e.keyCode === 90) {
++    e.preventDefault();
++    if (keydownActive === 'undo') {
++      return;
++    }
++    keydownActive = 'undo';
++    todo.undo.down(store);
++    return;
++  }
++  
+   if (e.metaKey === true || boardKeys.indexOf(e.keyCode) === -1) {
+     return;
+   }
+@@ -29,6 +40,16 @@ const keyDown = (e) => {
+ };
+ 
+ const keyUp = (e) => {
++  // 处理 Ctrl+Z 释放
++  if ((e.ctrlKey || e.metaKey) && e.keyCode === 90) {
++    e.preventDefault();
++    if (keydownActive === 'undo') {
++      keydownActive = '';
++    }
++    todo.undo.up(store);
++    return;
++  }
++  
+   if (e.metaKey === true || boardKeys.indexOf(e.keyCode) === -1) {
+     return;
+   }
+diff --git a/src/control/states.js b/src/control/states.js
+index 4787b2ffbd..2a3bfb5558 100644
+--- a/src/control/states.js
++++ b/src/control/states.js
+@@ -1,4 +1,4 @@
+-import { List } from 'immutable';
++import { List, Map } from 'immutable';
+ import store from '../store';
+ import { want, isClear, isOver } from '../unit/';
+ import actions from '../actions';
+@@ -6,6 +6,38 @@ import { speeds, blankLine, blankMatrix, clearPoints, eachLines } from '../unit/
+ import { music } from '../unit/music';
+ 
+ 
++// 保存游戏状态的辅助函数
++const saveGameState = () => {
++  const state = store.getState();
++  const cur = state.get('cur');
++  
++  // 保存当前游戏状态
++  const gameState = Map({
++    pause: state.get('pause'),
++    matrix: state.get('matrix'),
++    next: state.get('next'),
++    cur: cur ? {
++      type: cur.type,
++      xy: cur.xy,
++      shape: cur.shape,
++      rotateIndex: cur.rotateIndex,
++      timeStamp: cur.timeStamp,
++    } : null,
++    startLines: state.get('startLines'),
++    points: state.get('points'),
++    max: state.get('max'),
++    speedStart: state.get('speedStart'),
++    speedRun: state.get('speedRun'),
++    lock: state.get('lock'),
++    clearLines: state.get('clearLines'),
++    reset: state.get('reset'),
++    drop: state.get('drop'),
++    focus: state.get('focus'),
++  });
++  
++  store.dispatch(actions.saveState(gameState));
++};
++
+ const getStartMatrix = (startLines) => { // 生成startLines
+   const getLine = (min, max) => { // 返回标亮个数在min~max之间一行方块, (包含边界)
+     const count = parseInt((((max - min) + 1) * Math.random()) + min, 10);
+@@ -40,6 +72,7 @@ const getStartMatrix = (startLines) => { // 生成startLines
+ const states = {
+   // 自动下落setTimeout变量
+   fallInterval: null,
++  saveGameState,
+ 
+   // 游戏开始
+   start: () => {
+@@ -54,6 +87,10 @@ const states = {
+     store.dispatch(actions.matrix(startMatrix));
+     store.dispatch(actions.moveBlock({ type: state.get('next') }));
+     store.dispatch(actions.nextBlock());
++    // 保存初始状态
++    setTimeout(() => {
++      saveGameState();
++    }, 0);
+     states.auto();
+   },
+ 
+@@ -121,6 +158,10 @@ const states = {
+       store.dispatch(actions.lock(false));
+       store.dispatch(actions.moveBlock({ type: store.getState().get('next') }));
+       store.dispatch(actions.nextBlock());
++      // 保存新方块出现后的状态
++      setTimeout(() => {
++        saveGameState();
++      }, 0);
+       states.auto();
+     }, 100);
+   },
+@@ -172,6 +213,10 @@ const states = {
+     let speedNow = state.get('speedStart') + speedAdd;
+     speedNow = speedNow > 6 ? 6 : speedNow;
+     store.dispatch(actions.speedRun(speedNow));
++    // 保存消除行后的状态
++    setTimeout(() => {
++      saveGameState();
++    }, 0);
+   },
+ 
+   // 游戏结束, 触发动画
+diff --git a/src/control/todo/down.js b/src/control/todo/down.js
+index b74deea8ac..eeffc7640b 100644
+--- a/src/control/todo/down.js
++++ b/src/control/todo/down.js
+@@ -30,6 +30,10 @@ const down = (store) => {
+         const next = cur.fall();
+         if (want(next, state.get('matrix'))) {
+           store.dispatch(actions.moveBlock(next));
++          // 保存下移后的状态
++          setTimeout(() => {
++            states.saveGameState();
++          }, 0);
+           states.auto();
+         } else {
+           let matrix = state.get('matrix');
+diff --git a/src/control/todo/index.js b/src/control/todo/index.js
+index ed3995c9b9..96facab1ce 100644
+--- a/src/control/todo/index.js
++++ b/src/control/todo/index.js
+@@ -6,6 +6,7 @@ import space from './space';
+ import s from './s';
+ import r from './r';
+ import p from './p';
++import undo from './undo';
+ 
+ export default {
+   left,
+@@ -16,4 +17,5 @@ export default {
+   r,
+   p,
+   s,
++  undo,
+ };
+diff --git a/src/control/todo/left.js b/src/control/todo/left.js
+index 718e1b2dba..ea93869b6c 100644
+--- a/src/control/todo/left.js
++++ b/src/control/todo/left.js
+@@ -32,6 +32,10 @@ const down = (store) => {
+           next.timeStamp += parseInt(delay, 10);
+           store.dispatch(actions.moveBlock(next));
+           timeStamp = next.timeStamp;
++          // 保存左移后的状态
++          setTimeout(() => {
++            states.saveGameState();
++          }, 0);
+         } else {
+           cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10); // 真实移动delay多一点，碰壁delay少一点
+           store.dispatch(actions.moveBlock(cur));
+diff --git a/src/control/todo/right.js b/src/control/todo/right.js
+index 6cec9c1a97..37c41a0e07 100644
+--- a/src/control/todo/right.js
++++ b/src/control/todo/right.js
+@@ -32,6 +32,10 @@ const down = (store) => {
+           next.timeStamp += parseInt(delay, 10);
+           store.dispatch(actions.moveBlock(next));
+           timeStamp = next.timeStamp;
++          // 保存右移后的状态
++          setTimeout(() => {
++            states.saveGameState();
++          }, 0);
+         } else {
+           cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10); // 真实移动delay多一点，碰壁delay少一点
+           store.dispatch(actions.moveBlock(cur));
+diff --git a/src/control/todo/rotate.js b/src/control/todo/rotate.js
+index 1cbda8a339..3198ffbfe7 100644
+--- a/src/control/todo/rotate.js
++++ b/src/control/todo/rotate.js
+@@ -28,6 +28,10 @@ const down = (store) => {
+         const next = cur.rotate();
+         if (want(next, state.get('matrix'))) {
+           store.dispatch(actions.moveBlock(next));
++          // 保存旋转后的状态
++          setTimeout(() => {
++            states.saveGameState();
++          }, 0);
+         }
+       },
+     });
+diff --git a/src/reducers/index.js b/src/reducers/index.js
+index 2407ecc92e..2265f2f426 100644
+--- a/src/reducers/index.js
++++ b/src/reducers/index.js
+@@ -15,6 +15,7 @@ import reset from './reset';
+ import drop from './drop';
+ import keyboard from './keyboard';
+ import focus from './focus';
++import history from './history';
+ 
+ 
+ const rootReducer = combineReducers({
+@@ -34,6 +35,7 @@ const rootReducer = combineReducers({
+   drop,
+   keyboard,
+   focus,
++  history,
+ });
+ 
+ export default rootReducer;
+diff --git a/src/reducers/keyboard/index.js b/src/reducers/keyboard/index.js
+index ebda76266c..6cc2089384 100644
+--- a/src/reducers/keyboard/index.js
++++ b/src/reducers/keyboard/index.js
+@@ -7,6 +7,7 @@ import rotate from './rotate';
+ import reset from './reset';
+ import music from './music';
+ import pause from './pause';
++import undo from './undo';
+ 
+ const keyboardReducer = combineReducers({
+   drop,
+@@ -17,6 +18,7 @@ const keyboardReducer = combineReducers({
+   reset,
+   music,
+   pause,
++  undo,
+ });
+ 
+ export default keyboardReducer;
+diff --git a/src/unit/reducerType.js b/src/unit/reducerType.js
+index 28b0991a5b..b6530605e1 100644
+--- a/src/unit/reducerType.js
++++ b/src/unit/reducerType.js
+@@ -21,3 +21,6 @@ export const KEY_RESET = 'KEY_RESET';
+ export const KEY_MUSIC = 'KEY_MUSIC';
+ export const KEY_PAUSE = 'KEY_PAUSE';
+ export const FOCUS = 'FOCUS';
++export const SAVE_STATE = 'SAVE_STATE';
++export const UNDO = 'UNDO';
++export const KEY_UNDO = 'KEY_UNDO';
