@@ -26,8 +26,22 @@ const down = (store) => {
           music.rotate();
         }
         const next = cur.rotate();
-        if (want(next, state.get('matrix'))) {
+        let isCollision = !want(next, state.get('matrix'));
+        if (!isCollision) {
           store.dispatch(actions.moveBlock(next));
+        } else {
+          const matrix = state.get('matrix');
+          const offsets = [1, -1, 2, -2];
+          for (let i = 0; i < offsets.length; i++) {
+            const testNext = {
+              ...next,
+              xy: [next.xy[0], next.xy[1] + offsets[i]],
+            };
+            if (want(testNext, matrix)) {
+              store.dispatch(actions.moveBlock(testNext));
+              break;
+            }
+          }
         }
       },
     });
