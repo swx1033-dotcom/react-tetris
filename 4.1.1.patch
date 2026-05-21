@@ -1,0 +1,184 @@
+diff --git a/src/components/matrix/index.js b/src/components/matrix/index.js
+index c4b1d2daf9..127c9dc1ee 100644
+--- a/src/components/matrix/index.js
++++ b/src/components/matrix/index.js
+@@ -4,7 +4,7 @@ import classnames from 'classnames';
+ import propTypes from 'prop-types';
+ 
+ import style from './index.less';
+-import { isClear } from '../../unit/';
++import { isClear, getDropPosition } from '../../unit/';
+ import { fillLine, blankLine } from '../../unit/const';
+ import states from '../../control/states';
+ 
+@@ -73,6 +73,18 @@ export default class Matrix extends React.Component {
+         ]));
+       });
+     } else if (shape) {
++      const dropPosition = getDropPosition(props.matrix, cur, xy);
++      shape.forEach((m, k1) => (
++        m.forEach((n, k2) => {
++          if (n && dropPosition[0] + k1 >= 0) {
++            let line = matrix.get(dropPosition[0] + k1);
++            if (!line.get(dropPosition[1] + k2)) {
++              line = line.set(dropPosition[1] + k2, 3);
++              matrix = matrix.set(dropPosition[0] + k1, line);
++            }
++          }
++        })
++      ));
+       shape.forEach((m, k1) => (
+         m.forEach((n, k2) => {
+           if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
+@@ -156,6 +168,7 @@ export default class Matrix extends React.Component {
+                 className={classnames({
+                   c: e === 1,
+                   d: e === 2,
++                  g: e === 3,
+                 })}
+                 key={k2}
+               />)
+diff --git a/src/containers/index.less b/src/containers/index.less
+index ed7e1d45c8..0086a0db45 100644
+--- a/src/containers/index.less
++++ b/src/containers/index.less
+@@ -83,6 +83,13 @@ body{
+           background: #560000;
+         }
+       }
++      &.g {
++        opacity: .4;
++        border-color: #000;
++        &:after {
++          background: #000;
++        }
++      }
+     }
+   }
+ }
+@@ -133,4 +140,4 @@ body{
+     top: 426px;
+     left: 0;
+   }
+-}
+\ No newline at end of file
++}
+diff --git a/src/control/todo/space.js b/src/control/todo/space.js
+index 700659db0d..7ed98ca37b 100644
+--- a/src/control/todo/space.js
++++ b/src/control/todo/space.js
+@@ -1,4 +1,4 @@
+-import { want } from '../../unit/';
++import { getDropPosition } from '../../unit/';
+ import event from '../../unit/event';
+ import actions from '../../actions';
+ import states from '../states';
+@@ -23,14 +23,9 @@ const down = (store) => {
+         if (music.fall) {
+           music.fall();
+         }
+-        let index = 0;
+-        let bottom = cur.fall(index);
+-        while (want(bottom, state.get('matrix'))) {
+-          bottom = cur.fall(index);
+-          index++;
+-        }
++        const bottomPosition = getDropPosition(state.get('matrix'), cur, cur.xy);
+         let matrix = state.get('matrix');
+-        bottom = cur.fall(index - 2);
++        const bottom = cur.fall(bottomPosition[0] - cur.xy.get(0));
+         store.dispatch(actions.moveBlock(bottom));
+         const shape = bottom.shape;
+         const xy = bottom.xy;
+diff --git a/src/unit/index.js b/src/unit/index.js
+index e954b23c38..a8746862af 100644
+--- a/src/unit/index.js
++++ b/src/unit/index.js
+@@ -25,39 +25,61 @@ const isFocus = () => {
+   return !document[hiddenProperty];
+ };
+ 
++const want = (next, matrix) => {
++  const xy = next.xy;
++  const shape = next.shape;
++  const horizontal = shape.get(0).size;
++  return shape.every((m, k1) => (
++    m.every((n, k2) => {
++      if (xy[1] < 0) {
++        return false;
++      }
++      if (xy[1] + horizontal > 10) {
++        return false;
++      }
++      if (xy[0] + k1 < 0) {
++        return true;
++      }
++      if (xy[0] + k1 >= 20) {
++        return false;
++      }
++      if (n) {
++        if (matrix.get(xy[0] + k1).get(xy[1] + k2)) {
++          return false;
++        }
++        return true;
++      }
++      return true;
++    })
++  ));
++};
++
++const getDropPosition = (matrix, piece, position) => {
++  const xy = typeof position.get === 'function' ? [position.get(0), position.get(1)] : position;
++  let result = [xy[0], xy[1]];
++  let next = {
++    shape: piece.shape,
++    xy: [result[0] + 1, result[1]],
++  };
++  while (want(next, matrix)) {
++    result = next.xy;
++    next = {
++      shape: piece.shape,
++      xy: [result[0] + 1, result[1]],
++    };
++  }
++  return result;
++};
++
+ const unit = {
+   getNextType() { // 随机获取下一个方块类型
+     const len = blockType.length;
+     return blockType[Math.floor(Math.random() * len)];
+   },
+   want(next, matrix) { // 方块是否能移到到指定位置
+-    const xy = next.xy;
+-    const shape = next.shape;
+-    const horizontal = shape.get(0).size;
+-    return shape.every((m, k1) => (
+-      m.every((n, k2) => {
+-        if (xy[1] < 0) { // left
+-          return false;
+-        }
+-        if (xy[1] + horizontal > 10) { // right
+-          return false;
+-        }
+-        if (xy[0] + k1 < 0) { // top
+-          return true;
+-        }
+-        if (xy[0] + k1 >= 20) { // bottom
+-          return false;
+-        }
+-        if (n) {
+-          if (matrix.get(xy[0] + k1).get(xy[1] + k2)) {
+-            return false;
+-          }
+-          return true;
+-        }
+-        return true;
+-      })
+-    ));
++    return want(next, matrix);
+   },
++  getDropPosition,
+   isClear(matrix) { // 是否达到消除状态
+     const clearLines = [];
+     matrix.forEach((m, k) => {

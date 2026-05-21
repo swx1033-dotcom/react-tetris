@@ -4,7 +4,7 @@ import classnames from 'classnames';
 import propTypes from 'prop-types';
 
 import style from './index.less';
-import { isClear } from '../../unit/';
+import { isClear, getDropPosition } from '../../unit/';
 import { fillLine, blankLine } from '../../unit/const';
 import states from '../../control/states';
 
@@ -73,6 +73,18 @@ export default class Matrix extends React.Component {
         ]));
       });
     } else if (shape) {
+      const dropPosition = getDropPosition(props.matrix, cur, xy);
+      shape.forEach((m, k1) => (
+        m.forEach((n, k2) => {
+          if (n && dropPosition[0] + k1 >= 0) {
+            let line = matrix.get(dropPosition[0] + k1);
+            if (!line.get(dropPosition[1] + k2)) {
+              line = line.set(dropPosition[1] + k2, 3);
+              matrix = matrix.set(dropPosition[0] + k1, line);
+            }
+          }
+        })
+      ));
       shape.forEach((m, k1) => (
         m.forEach((n, k2) => {
           if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
@@ -156,6 +168,7 @@ export default class Matrix extends React.Component {
                 className={classnames({
                   c: e === 1,
                   d: e === 2,
+                  g: e === 3,
                 })}
                 key={k2}
               />)

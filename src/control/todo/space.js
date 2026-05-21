@@ -1,4 +1,4 @@
-import { want } from '../../unit/';
+import { getDropPosition } from '../../unit/';
 import event from '../../unit/event';
 import actions from '../../actions';
 import states from '../states';
@@ -23,14 +23,9 @@ const down = (store) => {
         if (music.fall) {
           music.fall();
         }
-        let index = 0;
-        let bottom = cur.fall(index);
-        while (want(bottom, state.get('matrix'))) {
-          bottom = cur.fall(index);
-          index++;
-        }
+        const bottomPosition = getDropPosition(state.get('matrix'), cur, cur.xy);
         let matrix = state.get('matrix');
-        bottom = cur.fall(index - 2);
+        const bottom = cur.fall(bottomPosition[0] - cur.xy.get(0));
         store.dispatch(actions.moveBlock(bottom));
         const shape = bottom.shape;
         const xy = bottom.xy;
