@@ -92,6 +92,12 @@
       "fr": "Réinitialiser",
       "fa": "ریست"
     },
+    "undo": {
+      "cn": "撤销",
+      "en": "Undo",
+      "fr": "Annuler",
+      "fa": "واگرد"
+    },
     "rotation": {
       "cn": "旋转",
       "en": "Rotation",

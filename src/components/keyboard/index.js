@@ -10,9 +10,7 @@ import { i18n, lan } from '../../unit/const';
 
 export default class Keyboard extends React.Component {
   componentDidMount() {
-    const touchEventCatch = {}; // 对于手机操作, 触发了touchstart, 将作出记录, 不再触发后面的mouse事件
-
-    // 在鼠标触发mousedown时, 移除元素时可以不触发mouseup, 这里做一个兼容, 以mouseout模拟mouseup
+    const touchEventCatch = {};
     const mouseDownEventCatch = {};
     document.addEventListener('touchstart', (e) => {
       if (e.preventDefault) {
@@ -20,14 +18,12 @@ export default class Keyboard extends React.Component {
       }
     }, true);
 
-    // 解决issue: https://github.com/chvin/react-tetris/issues/24
     document.addEventListener('touchend', (e) => {
       if (e.preventDefault) {
         e.preventDefault();
       }
     }, true);
 
-    // 阻止双指放大
     document.addEventListener('gesturestart', (e) => {
       if (e.preventDefault) {
         event.preventDefault();
@@ -131,6 +127,15 @@ export default class Keyboard extends React.Component {
           label={`${i18n.drop[lan]} (SPACE)`}
           active={keyboard.get('drop')}
           ref={(c) => { this.dom_space = c; }}
+        />
+        <Button
+          color="red"
+          size="s2"
+          top={0}
+          left={286}
+          label={`${i18n.undo[lan]}(Ctrl+Z)`}
+          active={keyboard.get('undo')}
+          ref={(c) => { this.dom_undo = c; }}
         />
         <Button
           color="red"

@@ -1,0 +1,486 @@
+diff --git a/i18n.json b/i18n.json
+index 5cb7e3b87d..5e561e572e 100644
+--- a/i18n.json
++++ b/i18n.json
+@@ -92,6 +92,12 @@
+       "fr": "Réinitialiser",
+       "fa": "ریست"
+     },
++    "undo": {
++      "cn": "撤销",
++      "en": "Undo",
++      "fr": "Annuler",
++      "fa": "واگرد"
++    },
+     "rotation": {
+       "cn": "旋转",
+       "en": "Rotation",
+diff --git a/src/actions/index.js b/src/actions/index.js
+index 4490c4bee6..a329877403 100644
+--- a/src/actions/index.js
++++ b/src/actions/index.js
+@@ -108,6 +108,12 @@ function focus(data) {
+   };
+ }
+ 
++function undo() {
++  return {
++    type: reducerType.UNDO,
++  };
++}
++
+ export default {
+   nextBlock,
+   moveBlock,
+@@ -125,4 +131,5 @@ export default {
+   keyboard,
+   music,
+   focus,
++  undo,
+ };
+diff --git a/src/actions/keyboard.js b/src/actions/keyboard.js
+index 22f50c9d14..3337d159f8 100644
+--- a/src/actions/keyboard.js
++++ b/src/actions/keyboard.js
+@@ -56,6 +56,13 @@ function pause(data) {
+   };
+ }
+ 
++function undo(data) {
++  return {
++    type: reducerType.KEY_UNDO,
++    data,
++  };
++}
++
+ export default {
+   drop,
+   down,
+@@ -65,4 +72,5 @@ export default {
+   reset,
+   music,
+   pause,
++  undo,
+ };
+diff --git a/src/components/keyboard/index.js b/src/components/keyboard/index.js
+index fd608773fd..9c4fbb0297 100644
+--- a/src/components/keyboard/index.js
++++ b/src/components/keyboard/index.js
+@@ -10,9 +10,7 @@ import { i18n, lan } from '../../unit/const';
+ 
+ export default class Keyboard extends React.Component {
+   componentDidMount() {
+-    const touchEventCatch = {}; // 对于手机操作, 触发了touchstart, 将作出记录, 不再触发后面的mouse事件
+-
+-    // 在鼠标触发mousedown时, 移除元素时可以不触发mouseup, 这里做一个兼容, 以mouseout模拟mouseup
++    const touchEventCatch = {};
+     const mouseDownEventCatch = {};
+     document.addEventListener('touchstart', (e) => {
+       if (e.preventDefault) {
+@@ -20,14 +18,12 @@ export default class Keyboard extends React.Component {
+       }
+     }, true);
+ 
+-    // 解决issue: https://github.com/chvin/react-tetris/issues/24
+     document.addEventListener('touchend', (e) => {
+       if (e.preventDefault) {
+         e.preventDefault();
+       }
+     }, true);
+ 
+-    // 阻止双指放大
+     document.addEventListener('gesturestart', (e) => {
+       if (e.preventDefault) {
+         event.preventDefault();
+@@ -132,6 +128,15 @@ export default class Keyboard extends React.Component {
+           active={keyboard.get('drop')}
+           ref={(c) => { this.dom_space = c; }}
+         />
++        <Button
++          color="red"
++          size="s2"
++          top={0}
++          left={286}
++          label={`${i18n.undo[lan]}(Ctrl+Z)`}
++          active={keyboard.get('undo')}
++          ref={(c) => { this.dom_undo = c; }}
++        />
+         <Button
+           color="red"
+           size="s2"
+diff --git a/src/control/index.js b/src/control/index.js
+index 25d1c455b4..773474f857 100644
+--- a/src/control/index.js
++++ b/src/control/index.js
+@@ -10,17 +10,29 @@ const keyboard = {
+   83: 's',
+   82: 'r',
+   80: 'p',
++  90: 'undo',
+ };
+ 
+ let keydownActive;
+ 
+ const boardKeys = Object.keys(keyboard).map(e => parseInt(e, 10));
+ 
++const isUndoEvent = e => e.keyCode === 90 && (e.ctrlKey === true || e.metaKey === true);
++
+ const keyDown = (e) => {
+-  if (e.metaKey === true || boardKeys.indexOf(e.keyCode) === -1) {
++  if ((e.metaKey === true || e.ctrlKey === true) && !isUndoEvent(e)) {
++    return;
++  }
++  if (!isUndoEvent(e) && (e.keyCode === 90 || boardKeys.indexOf(e.keyCode) === -1)) {
+     return;
+   }
+   const type = keyboard[e.keyCode];
++  if (!type) {
++    return;
++  }
++  if (type === 'undo' && e.preventDefault) {
++    e.preventDefault();
++  }
+   if (type === keydownActive) {
+     return;
+   }
+@@ -29,10 +41,16 @@ const keyDown = (e) => {
+ };
+ 
+ const keyUp = (e) => {
+-  if (e.metaKey === true || boardKeys.indexOf(e.keyCode) === -1) {
++  if ((e.metaKey === true || e.ctrlKey === true) && e.keyCode !== 90) {
++    return;
++  }
++  if (e.keyCode !== 90 && boardKeys.indexOf(e.keyCode) === -1) {
+     return;
+   }
+   const type = keyboard[e.keyCode];
++  if (!type) {
++    return;
++  }
+   if (type === keydownActive) {
+     keydownActive = '';
+   }
+@@ -41,4 +59,3 @@ const keyUp = (e) => {
+ 
+ document.addEventListener('keydown', keyDown, true);
+ document.addEventListener('keyup', keyUp, true);
+-
+diff --git a/src/control/states.js b/src/control/states.js
+index 4787b2ffbd..d148695a1b 100644
+--- a/src/control/states.js
++++ b/src/control/states.js
+@@ -6,14 +6,14 @@ import { speeds, blankLine, blankMatrix, clearPoints, eachLines } from '../unit/
+ import { music } from '../unit/music';
+ 
+ 
+-const getStartMatrix = (startLines) => { // 生成startLines
+-  const getLine = (min, max) => { // 返回标亮个数在min~max之间一行方块, (包含边界)
++const getStartMatrix = (startLines) => {
++  const getLine = (min, max) => {
+     const count = parseInt((((max - min) + 1) * Math.random()) + min, 10);
+     const line = [];
+-    for (let i = 0; i < count; i++) { // 插入高亮
++    for (let i = 0; i < count; i++) {
+       line.push(1);
+     }
+-    for (let i = 0, len = 10 - count; i < len; i++) { // 在随机位置插入灰色
++    for (let i = 0, len = 10 - count; i < len; i++) {
+       const index = parseInt(((line.length + 1) * Math.random()), 10);
+       line.splice(index, 0, 0);
+     }
+@@ -23,25 +23,23 @@ const getStartMatrix = (startLines) => { // 生成startLines
+   let startMatrix = List([]);
+ 
+   for (let i = 0; i < startLines; i++) {
+-    if (i <= 2) { // 0-3
++    if (i <= 2) {
+       startMatrix = startMatrix.push(getLine(5, 8));
+-    } else if (i <= 6) { // 4-6
++    } else if (i <= 6) {
+       startMatrix = startMatrix.push(getLine(4, 9));
+-    } else { // 7-9
++    } else {
+       startMatrix = startMatrix.push(getLine(3, 9));
+     }
+   }
+-  for (let i = 0, len = 20 - startLines; i < len; i++) { // 插入上部分的灰色
++  for (let i = 0, len = 20 - startLines; i < len; i++) {
+     startMatrix = startMatrix.unshift(List(blankLine));
+   }
+   return startMatrix;
+ };
+ 
+ const states = {
+-  // 自动下落setTimeout变量
+   fallInterval: null,
+ 
+-  // 游戏开始
+   start: () => {
+     if (music.start) {
+       music.start();
+@@ -57,7 +55,6 @@ const states = {
+     states.auto();
+   },
+ 
+-  // 自动下落
+   auto: (timeout) => {
+     const out = (timeout < 0 ? 0 : timeout);
+     let state = store.getState();
+@@ -75,7 +72,7 @@ const states = {
+         const xy = cur && cur.xy;
+         shape.forEach((m, k1) => (
+           m.forEach((n, k2) => {
+-            if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
++            if (n && xy.get(0) + k1 >= 0) {
+               let line = matrix.get(xy.get(0) + k1);
+               line = line.set(xy.get(1) + k2, 1);
+               matrix = matrix.set(xy.get(0) + k1, line);
+@@ -90,7 +87,6 @@ const states = {
+       out === undefined ? speeds[state.get('speedRun') - 1] : out);
+   },
+ 
+-  // 一个方块结束, 触发下一个
+   nextAround: (matrix, stopDownTrigger) => {
+     clearTimeout(states.fallInterval);
+     store.dispatch(actions.lock(true));
+@@ -100,7 +96,7 @@ const states = {
+     }
+ 
+     const addPoints = (store.getState().get('points') + 10) +
+-      ((store.getState().get('speedRun') - 1) * 2); // 速度越快, 得分越高
++      ((store.getState().get('speedRun') - 1) * 2);
+ 
+     states.dispatchPoints(addPoints);
+ 
+@@ -125,7 +121,6 @@ const states = {
+     }, 100);
+   },
+ 
+-  // 页面焦点变换
+   focus: (isFocus) => {
+     store.dispatch(actions.focus(isFocus));
+     if (!isFocus) {
+@@ -138,7 +133,6 @@ const states = {
+     }
+   },
+ 
+-  // 暂停
+   pause: (isPause) => {
+     store.dispatch(actions.pause(isPause));
+     if (isPause) {
+@@ -148,7 +142,18 @@ const states = {
+     states.auto();
+   },
+ 
+-  // 消除行
++  undo: () => {
++    clearTimeout(states.fallInterval);
++    if (!store.undo()) {
++      return false;
++    }
++    const state = store.getState();
++    if (state.get('cur') && !state.get('pause') && !state.get('lock') && !state.get('reset') && state.get('focus')) {
++      states.auto();
++    }
++    return true;
++  },
++
+   clearLines: (matrix, lines) => {
+     const state = store.getState();
+     let newMatrix = matrix;
+@@ -162,19 +167,18 @@ const states = {
+     states.auto();
+     store.dispatch(actions.lock(false));
+     const clearLines = state.get('clearLines') + lines.length;
+-    store.dispatch(actions.clearLines(clearLines)); // 更新消除行
++    store.dispatch(actions.clearLines(clearLines));
+ 
+     const addPoints = store.getState().get('points') +
+-      clearPoints[lines.length - 1]; // 一次消除的行越多, 加分越多
++      clearPoints[lines.length - 1];
+     states.dispatchPoints(addPoints);
+ 
+-    const speedAdd = Math.floor(clearLines / eachLines); // 消除行数, 增加对应速度
++    const speedAdd = Math.floor(clearLines / eachLines);
+     let speedNow = state.get('speedStart') + speedAdd;
+     speedNow = speedNow > 6 ? 6 : speedNow;
+     store.dispatch(actions.speedRun(speedNow));
+   },
+ 
+-  // 游戏结束, 触发动画
+   overStart: () => {
+     clearTimeout(states.fallInterval);
+     store.dispatch(actions.lock(true));
+@@ -182,7 +186,6 @@ const states = {
+     store.dispatch(actions.pause(false));
+   },
+ 
+-  // 游戏结束动画完成
+   overEnd: () => {
+     store.dispatch(actions.matrix(blankMatrix));
+     store.dispatch(actions.moveBlock({ reset: true }));
+@@ -191,8 +194,7 @@ const states = {
+     store.dispatch(actions.clearLines(0));
+   },
+ 
+-  // 写入分数
+-  dispatchPoints: (point) => { // 写入分数, 同时判断是否创造最高分
++  dispatchPoints: (point) => {
+     store.dispatch(actions.points(point));
+     if (point > 0 && point > store.getState().get('max')) {
+       store.dispatch(actions.max(point));
+diff --git a/src/control/todo/index.js b/src/control/todo/index.js
+index ed3995c9b9..96facab1ce 100644
+--- a/src/control/todo/index.js
++++ b/src/control/todo/index.js
+@@ -6,6 +6,7 @@ import space from './space';
+ import s from './s';
+ import r from './r';
+ import p from './p';
++import undo from './undo';
+ 
+ export default {
+   left,
+@@ -16,4 +17,5 @@ export default {
+   r,
+   p,
+   s,
++  undo,
+ };
+diff --git a/src/reducers/keyboard/index.js b/src/reducers/keyboard/index.js
+index ebda76266c..6cc2089384 100644
+--- a/src/reducers/keyboard/index.js
++++ b/src/reducers/keyboard/index.js
+@@ -7,6 +7,7 @@ import rotate from './rotate';
+ import reset from './reset';
+ import music from './music';
+ import pause from './pause';
++import undo from './undo';
+ 
+ const keyboardReducer = combineReducers({
+   drop,
+@@ -17,6 +18,7 @@ const keyboardReducer = combineReducers({
+   reset,
+   music,
+   pause,
++  undo,
+ });
+ 
+ export default keyboardReducer;
+diff --git a/src/store/index.js b/src/store/index.js
+index f643782451..58af010692 100644
+--- a/src/store/index.js
++++ b/src/store/index.js
+@@ -1,6 +1,90 @@
+ import { createStore } from 'redux';
+-import rootReducer from '../reducers';
++import { List } from 'immutable';
++import reducer, { canTrackState, getTrackedState, isTrackedStateEqual } from '../reducers/game';
++import * as reducerType from '../unit/reducerType';
+ 
+-const store = createStore(rootReducer, window.devToolsExtension && window.devToolsExtension());
++const HISTORY_LIMIT = 50;
++
++const store = createStore(reducer, window.devToolsExtension && window.devToolsExtension());
++
++let past = List();
++let future = List();
++let present = getTrackedState(store.getState());
++let commitTimer = null;
++
++const commitHistory = () => {
++  commitTimer = null;
++  const current = getTrackedState(store.getState());
++  if (!canTrackState(current) || isTrackedStateEqual(current, present)) {
++    return false;
++  }
++  past = past.push(present);
++  if (past.size > HISTORY_LIMIT) {
++    past = past.shift();
++  }
++  present = current;
++  future = List();
++  return true;
++};
++
++const flushHistory = () => {
++  if (commitTimer === null) {
++    return false;
++  }
++  clearTimeout(commitTimer);
++  return commitHistory();
++};
++
++const scheduleHistory = () => {
++  if (commitTimer !== null) {
++    return;
++  }
++  commitTimer = setTimeout(commitHistory, 0);
++};
++
++const originalDispatch = store.dispatch;
++
++store.dispatch = (action) => {
++  if (action.type === reducerType.UNDO) {
++    flushHistory();
++    const current = getTrackedState(store.getState());
++    if (!isTrackedStateEqual(current, present)) {
++      originalDispatch({
++        type: reducerType.RESTORE_GAME_STATE,
++        data: present,
++      });
++      return action;
++    }
++    if (!past.size) {
++      return action;
++    }
++    future = future.push(present);
++    present = past.last();
++    past = past.pop();
++    originalDispatch({
++      type: reducerType.RESTORE_GAME_STATE,
++      data: present,
++    });
++    return action;
++  }
++  const prevState = getTrackedState(store.getState());
++  const result = originalDispatch(action);
++  const nextState = getTrackedState(store.getState());
++  if (!isTrackedStateEqual(prevState, nextState)) {
++    scheduleHistory();
++  }
++  return result;
++};
++
++store.undo = () => {
++  const prevState = store.getState();
++  store.dispatch({ type: reducerType.UNDO });
++  return prevState !== store.getState();
++};
++
++store.canUndo = () => {
++  flushHistory();
++  return past.size > 0 || !isTrackedStateEqual(getTrackedState(store.getState()), present);
++};
+ 
+ export default store;
+diff --git a/src/unit/reducerType.js b/src/unit/reducerType.js
+index 28b0991a5b..248f15a4d7 100644
+--- a/src/unit/reducerType.js
++++ b/src/unit/reducerType.js
+@@ -12,6 +12,8 @@ export const LOCK = 'LOCK';
+ export const CLEAR_LINES = 'CLEAR_LINES';
+ export const RESET = 'RESET';
+ export const DROP = 'DROP';
++export const UNDO = 'UNDO';
++export const RESTORE_GAME_STATE = 'RESTORE_GAME_STATE';
+ export const KEY_DROP = 'KEY_DROP';
+ export const KEY_DOWN = 'KEY_DOWN';
+ export const KEY_LEFT = 'KEY_LEFT';
+@@ -20,4 +22,5 @@ export const KEY_ROTATE = 'KEY_ROTATE';
+ export const KEY_RESET = 'KEY_RESET';
+ export const KEY_MUSIC = 'KEY_MUSIC';
+ export const KEY_PAUSE = 'KEY_PAUSE';
++export const KEY_UNDO = 'KEY_UNDO';
+ export const FOCUS = 'FOCUS';
