@@ -1,0 +1,113 @@
+diff --git a/src/components/matrix/index.js b/src/components/matrix/index.js
+index c4b1d2daf9..804bf8254b 100644
+--- a/src/components/matrix/index.js
++++ b/src/components/matrix/index.js
+@@ -4,7 +4,7 @@ import classnames from 'classnames';
+ import propTypes from 'prop-types';
+ 
+ import style from './index.less';
+-import { isClear } from '../../unit/';
++import { isClear, getDropPosition } from '../../unit/';
+ import { fillLine, blankLine } from '../../unit/const';
+ import states from '../../control/states';
+ 
+@@ -73,12 +73,13 @@ export default class Matrix extends React.Component {
+         ]));
+       });
+     } else if (shape) {
++      const dropX = getDropPosition(props.matrix, cur);
+       shape.forEach((m, k1) => (
+         m.forEach((n, k2) => {
+-          if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
++          if (n && xy.get(0) + k1 >= 0) {
+             let line = matrix.get(xy.get(0) + k1);
+             let color;
+-            if (line.get(xy.get(1) + k2) === 1 && !clearLines) { // 矩阵与方块重合
++            if (line.get(xy.get(1) + k2) === 1 && !clearLines) {
+               color = 2;
+             } else {
+               color = 1;
+@@ -86,6 +87,13 @@ export default class Matrix extends React.Component {
+             line = line.set(xy.get(1) + k2, color);
+             matrix = matrix.set(xy.get(0) + k1, line);
+           }
++          if (n && dropX + k1 >= 0 && dropX + k1 !== xy.get(0) + k1) {
++            let line = matrix.get(dropX + k1);
++            if (!line.get(xy.get(1) + k2)) {
++              line = line.set(xy.get(1) + k2, 3);
++              matrix = matrix.set(dropX + k1, line);
++            }
++          }
+         })
+       ));
+     }
+@@ -156,6 +164,7 @@ export default class Matrix extends React.Component {
+                 className={classnames({
+                   c: e === 1,
+                   d: e === 2,
++                  g: e === 3,
+                 })}
+                 key={k2}
+               />)
+diff --git a/src/containers/index.less b/src/containers/index.less
+index ed7e1d45c8..08e36a7f70 100644
+--- a/src/containers/index.less
++++ b/src/containers/index.less
+@@ -83,6 +83,13 @@ body{
+           background: #560000;
+         }
+       }
++      &.g {
++        border-color: #000;
++        &:after {
++          background: #000;
++          opacity: 0.4;
++        }
++      }
+     }
+   }
+ }
+diff --git a/src/unit/index.js b/src/unit/index.js
+index e954b23c38..a585a14bf7 100644
+--- a/src/unit/index.js
++++ b/src/unit/index.js
+@@ -58,6 +58,39 @@ const unit = {
+       })
+     ));
+   },
++  getDropPosition(matrix, piece) {
++    const shape = piece.shape;
++    const horizontal = shape.get(0).size;
++    let dropX = piece.xy.get(0);
++
++    while (shape.every((m, k1) => (
++      m.every((n, k2) => {
++        if (piece.xy.get(1) + k2 < 0) {
++          return false;
++        }
++        if (piece.xy.get(1) + horizontal > 10) {
++          return false;
++        }
++        if (dropX + k1 < 0) {
++          return true;
++        }
++        if (dropX + k1 >= 20) {
++          return false;
++        }
++        if (n) {
++          if (matrix.get(dropX + k1).get(piece.xy.get(1) + k2)) {
++            return false;
++          }
++          return true;
++        }
++        return true;
++      })
++    ))) {
++      dropX++;
++    }
++
++    return dropX;
++  },
+   isClear(matrix) { // 是否达到消除状态
+     const clearLines = [];
+     matrix.forEach((m, k) => {

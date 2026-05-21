@@ -4,7 +4,7 @@ import classnames from 'classnames';
 import propTypes from 'prop-types';
 
 import style from './index.less';
-import { isClear } from '../../unit/';
+import { isClear, getDropPosition } from '../../unit/';
 import { fillLine, blankLine } from '../../unit/const';
 import states from '../../control/states';
 
@@ -73,18 +73,26 @@ export default class Matrix extends React.Component {
         ]));
       });
     } else if (shape) {
+      const dropX = getDropPosition(props.matrix, cur);
       shape.forEach((m, k1) => (
         m.forEach((n, k2) => {
-          if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
+          if (n && xy.get(0) + k1 >= 0) {
             let line = matrix.get(xy.get(0) + k1);
             let color;
-            if (line.get(xy.get(1) + k2) === 1 && !clearLines) { // 矩阵与方块重合
+            if (line.get(xy.get(1) + k2) === 1 && !clearLines) {
               color = 2;
             } else {
               color = 1;
             }
             line = line.set(xy.get(1) + k2, color);
             matrix = matrix.set(xy.get(0) + k1, line);
+          }
+          if (n && dropX + k1 >= 0 && dropX + k1 !== xy.get(0) + k1) {
+            let line = matrix.get(dropX + k1);
+            if (!line.get(xy.get(1) + k2)) {
+              line = line.set(xy.get(1) + k2, 3);
+              matrix = matrix.set(dropX + k1, line);
+            }
           }
         })
       ));
@@ -156,6 +164,7 @@ export default class Matrix extends React.Component {
                 className={classnames({
                   c: e === 1,
                   d: e === 2,
+                  g: e === 3,
                 })}
                 key={k2}
               />)

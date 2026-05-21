@@ -58,6 +58,39 @@ const unit = {
       })
     ));
   },
+  getDropPosition(matrix, piece) {
+    const shape = piece.shape;
+    const horizontal = shape.get(0).size;
+    let dropX = piece.xy.get(0);
+
+    while (shape.every((m, k1) => (
+      m.every((n, k2) => {
+        if (piece.xy.get(1) + k2 < 0) {
+          return false;
+        }
+        if (piece.xy.get(1) + horizontal > 10) {
+          return false;
+        }
+        if (dropX + k1 < 0) {
+          return true;
+        }
+        if (dropX + k1 >= 20) {
+          return false;
+        }
+        if (n) {
+          if (matrix.get(dropX + k1).get(piece.xy.get(1) + k2)) {
+            return false;
+          }
+          return true;
+        }
+        return true;
+      })
+    ))) {
+      dropX++;
+    }
+
+    return dropX;
+  },
   isClear(matrix) { // 是否达到消除状态
     const clearLines = [];
     matrix.forEach((m, k) => {
