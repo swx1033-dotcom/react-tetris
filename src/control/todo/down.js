@@ -16,16 +16,15 @@ const down = (store) => {
         if (state.get('lock')) {
           return;
         }
-        if (music.move) {
-          music.move();
-        }
         const cur = state.get('cur');
         if (cur === null) {
           return;
         }
         if (state.get('pause')) {
-          states.pause(false);
           return;
+        }
+        if (music.move) {
+          music.move();
         }
         const next = cur.fall();
         if (want(next, state.get('matrix'))) {

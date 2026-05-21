@@ -1,0 +1,195 @@
+diff --git a/src/components/keyboard/index.js b/src/components/keyboard/index.js
+index fd608773fd..46042db4bd 100644
+--- a/src/components/keyboard/index.js
++++ b/src/components/keyboard/index.js
+@@ -6,6 +6,7 @@ import style from './index.less';
+ import Button from './button';
+ import store from '../../store';
+ import todo from '../../control/todo';
++import { shouldBlockOnPause } from '../../control';
+ import { i18n, lan } from '../../unit/const';
+ 
+ export default class Keyboard extends React.Component {
+@@ -45,6 +46,9 @@ export default class Keyboard extends React.Component {
+         if (touchEventCatch[key] === true) {
+           return;
+         }
++        if (shouldBlockOnPause(key)) {
++          return;
++        }
+         todo[key].down(store);
+         mouseDownEventCatch[key] = true;
+       }, true);
+@@ -63,6 +67,9 @@ export default class Keyboard extends React.Component {
+       }, true);
+       this[`dom_${key}`].dom.addEventListener('touchstart', () => {
+         touchEventCatch[key] = true;
++        if (shouldBlockOnPause(key)) {
++          return;
++        }
+         todo[key].down(store);
+       }, true);
+       this[`dom_${key}`].dom.addEventListener('touchend', () => {
+diff --git a/src/control/index.js b/src/control/index.js
+index 25d1c455b4..a570311944 100644
+--- a/src/control/index.js
++++ b/src/control/index.js
+@@ -12,6 +12,12 @@ const keyboard = {
+   80: 'p',
+ };
+ 
++const PAUSE_BLOCK_KEYS = ['left', 'right', 'down', 'rotate', 'space'];
++
++export const shouldBlockOnPause = (type) => {
++  return PAUSE_BLOCK_KEYS.indexOf(type) !== -1 && store.getState().get('pause');
++};
++
+ let keydownActive;
+ 
+ const boardKeys = Object.keys(keyboard).map(e => parseInt(e, 10));
+@@ -24,6 +30,9 @@ const keyDown = (e) => {
+   if (type === keydownActive) {
+     return;
+   }
++  if (shouldBlockOnPause(type)) {
++    return;
++  }
+   keydownActive = type;
+   todo[type].down(store);
+ };
+diff --git a/src/control/todo/down.js b/src/control/todo/down.js
+index b74deea8ac..4c39a4087f 100644
+--- a/src/control/todo/down.js
++++ b/src/control/todo/down.js
+@@ -16,17 +16,16 @@ const down = (store) => {
+         if (state.get('lock')) {
+           return;
+         }
+-        if (music.move) {
+-          music.move();
+-        }
+         const cur = state.get('cur');
+         if (cur === null) {
+           return;
+         }
+         if (state.get('pause')) {
+-          states.pause(false);
+           return;
+         }
++        if (music.move) {
++          music.move();
++        }
+         const next = cur.fall();
+         if (want(next, state.get('matrix'))) {
+           store.dispatch(actions.moveBlock(next));
+diff --git a/src/control/todo/left.js b/src/control/todo/left.js
+index 718e1b2dba..6c74396f25 100644
+--- a/src/control/todo/left.js
++++ b/src/control/todo/left.js
+@@ -16,15 +16,14 @@ const down = (store) => {
+       if (state.get('lock')) {
+         return;
+       }
+-      if (music.move) {
+-        music.move();
+-      }
+       const cur = state.get('cur');
+       if (cur !== null) {
+         if (state.get('pause')) {
+-          states.pause(false);
+           return;
+         }
++        if (music.move) {
++          music.move();
++        }
+         const next = cur.left();
+         const delay = delays[state.get('speedRun') - 1];
+         let timeStamp;
+diff --git a/src/control/todo/r.js b/src/control/todo/r.js
+index 642e4eb7ea..483d144590 100644
+--- a/src/control/todo/r.js
++++ b/src/control/todo/r.js
+@@ -12,6 +12,9 @@ const down = (store) => {
+       key: 'r',
+       once: true,
+       callback: () => {
++        if (store.getState().get('pause')) {
++          store.dispatch(actions.pause(false));
++        }
+         states.overStart();
+       },
+     });
+@@ -23,6 +26,9 @@ const down = (store) => {
+         if (store.getState().get('lock')) {
+           return;
+         }
++        if (store.getState().get('pause')) {
++          store.dispatch(actions.pause(false));
++        }
+         states.start();
+       },
+     });
+diff --git a/src/control/todo/right.js b/src/control/todo/right.js
+index 6cec9c1a97..237f3eb647 100644
+--- a/src/control/todo/right.js
++++ b/src/control/todo/right.js
+@@ -16,15 +16,14 @@ const down = (store) => {
+       if (state.get('lock')) {
+         return;
+       }
+-      if (music.move) {
+-        music.move();
+-      }
+       const cur = state.get('cur');
+       if (cur !== null) {
+         if (state.get('pause')) {
+-          states.pause(false);
+           return;
+         }
++        if (music.move) {
++          music.move();
++        }
+         const next = cur.right();
+         const delay = delays[state.get('speedRun') - 1];
+         let timeStamp;
+diff --git a/src/control/todo/rotate.js b/src/control/todo/rotate.js
+index 1cbda8a339..ebafd726f2 100644
+--- a/src/control/todo/rotate.js
++++ b/src/control/todo/rotate.js
+@@ -1,7 +1,6 @@
+ import { want } from '../../unit/';
+ import event from '../../unit/event';
+ import actions from '../../actions';
+-import states from '../states';
+ import { music } from '../../unit/music';
+ 
+ const down = (store) => {
+@@ -15,13 +14,13 @@ const down = (store) => {
+         if (state.get('lock')) {
+           return;
+         }
+-        if (state.get('pause')) {
+-          states.pause(false);
+-        }
+         const cur = state.get('cur');
+         if (cur === null) {
+           return;
+         }
++        if (state.get('pause')) {
++          return;
++        }
+         if (music.rotate) {
+           music.rotate();
+         }
+diff --git a/src/control/todo/space.js b/src/control/todo/space.js
+index 700659db0d..48ea2e1c76 100644
+--- a/src/control/todo/space.js
++++ b/src/control/todo/space.js
+@@ -17,7 +17,6 @@ const down = (store) => {
+       const cur = state.get('cur');
+       if (cur !== null) { // 置底
+         if (state.get('pause')) {
+-          states.pause(false);
+           return;
+         }
+         if (music.fall) {

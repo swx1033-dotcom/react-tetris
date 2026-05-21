@@ -12,6 +12,9 @@ const down = (store) => {
       key: 'r',
       once: true,
       callback: () => {
+        if (store.getState().get('pause')) {
+          store.dispatch(actions.pause(false));
+        }
         states.overStart();
       },
     });
@@ -22,6 +25,9 @@ const down = (store) => {
       callback: () => {
         if (store.getState().get('lock')) {
           return;
+        }
+        if (store.getState().get('pause')) {
+          store.dispatch(actions.pause(false));
         }
         states.start();
       },

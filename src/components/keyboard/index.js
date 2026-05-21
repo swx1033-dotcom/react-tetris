@@ -6,6 +6,7 @@ import style from './index.less';
 import Button from './button';
 import store from '../../store';
 import todo from '../../control/todo';
+import { shouldBlockOnPause } from '../../control';
 import { i18n, lan } from '../../unit/const';
 
 export default class Keyboard extends React.Component {
@@ -45,6 +46,9 @@ export default class Keyboard extends React.Component {
         if (touchEventCatch[key] === true) {
           return;
         }
+        if (shouldBlockOnPause(key)) {
+          return;
+        }
         todo[key].down(store);
         mouseDownEventCatch[key] = true;
       }, true);
@@ -63,6 +67,9 @@ export default class Keyboard extends React.Component {
       }, true);
       this[`dom_${key}`].dom.addEventListener('touchstart', () => {
         touchEventCatch[key] = true;
+        if (shouldBlockOnPause(key)) {
+          return;
+        }
         todo[key].down(store);
       }, true);
       this[`dom_${key}`].dom.addEventListener('touchend', () => {

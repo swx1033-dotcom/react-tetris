@@ -12,6 +12,12 @@ const keyboard = {
   80: 'p',
 };
 
+const PAUSE_BLOCK_KEYS = ['left', 'right', 'down', 'rotate', 'space'];
+
+export const shouldBlockOnPause = (type) => {
+  return PAUSE_BLOCK_KEYS.indexOf(type) !== -1 && store.getState().get('pause');
+};
+
 let keydownActive;
 
 const boardKeys = Object.keys(keyboard).map(e => parseInt(e, 10));
@@ -22,6 +28,9 @@ const keyDown = (e) => {
   }
   const type = keyboard[e.keyCode];
   if (type === keydownActive) {
+    return;
+  }
+  if (shouldBlockOnPause(type)) {
     return;
   }
   keydownActive = type;
