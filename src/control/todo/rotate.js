@@ -26,8 +26,26 @@ const down = (store) => {
           music.rotate();
         }
         const next = cur.rotate();
+        let validNext = null;
+        
         if (want(next, state.get('matrix'))) {
-          store.dispatch(actions.moveBlock(next));
+          validNext = next;
+        } else {
+          const offsets = [[0, 1], [0, -1], [0, 2], [0, -2]];
+          for (const [yOffset, xOffset] of offsets) {
+            const offsetNext = {
+              ...next,
+              xy: [next.xy[0] + yOffset, next.xy[1] + xOffset]
+            };
+            if (want(offsetNext, state.get('matrix'))) {
+              validNext = offsetNext;
+              break;
+            }
+          }
+        }
+        
+        if (validNext) {
+          store.dispatch(actions.moveBlock(validNext));
         }
       },
     });
