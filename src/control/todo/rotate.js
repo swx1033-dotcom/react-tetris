@@ -15,9 +15,6 @@ const down = (store) => {
         if (state.get('lock')) {
           return;
         }
-        if (state.get('pause')) {
-          states.pause(false);
-        }
         const cur = state.get('cur');
         if (cur === null) {
           return;

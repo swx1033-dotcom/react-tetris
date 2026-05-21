@@ -12,6 +12,10 @@ const down = (store) => {
       key: 'r',
       once: true,
       callback: () => {
+        const state = store.getState();
+        if (state.get('pause')) {
+          states.pause(false);
+        }
         states.overStart();
       },
     });

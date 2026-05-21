@@ -23,10 +23,6 @@ const down = (store) => {
         if (cur === null) {
           return;
         }
-        if (state.get('pause')) {
-          states.pause(false);
-          return;
-        }
         const next = cur.fall();
         if (want(next, state.get('matrix'))) {
           store.dispatch(actions.moveBlock(next));

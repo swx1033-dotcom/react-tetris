@@ -21,10 +21,6 @@ const down = (store) => {
       }
       const cur = state.get('cur');
       if (cur !== null) {
-        if (state.get('pause')) {
-          states.pause(false);
-          return;
-        }
         const next = cur.left();
         const delay = delays[state.get('speedRun') - 1];
         let timeStamp;
