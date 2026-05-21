@@ -1,0 +1,249 @@
+diff --git a/i18n.json b/i18n.json
+index 5cb7e3b87d..eda70dab21 100644
+--- a/i18n.json
++++ b/i18n.json
+@@ -92,6 +92,12 @@
+       "fr": "Réinitialiser",
+       "fa": "ریست"
+     },
++    "undo": {
++      "cn": "撤销",
++      "en": "Undo",
++      "fr": "Annuler",
++      "fa": "لغو"
++    },
+     "rotation": {
+       "cn": "旋转",
+       "en": "Rotation",
+diff --git a/src/actions/index.js b/src/actions/index.js
+index 4490c4bee6..a329877403 100644
+--- a/src/actions/index.js
++++ b/src/actions/index.js
+@@ -108,6 +108,12 @@ function focus(data) {
+   };
+ }
+ 
++function undo() {
++  return {
++    type: reducerType.UNDO,
++  };
++}
++
+ export default {
+   nextBlock,
+   moveBlock,
+@@ -125,4 +131,5 @@ export default {
+   keyboard,
+   music,
+   focus,
++  undo,
+ };
+diff --git a/src/actions/keyboard.js b/src/actions/keyboard.js
+index 22f50c9d14..4c061f5dd7 100644
+--- a/src/actions/keyboard.js
++++ b/src/actions/keyboard.js
+@@ -56,6 +56,13 @@ function pause(data) {
+   };
+ }
+ 
++function z(data) {
++  return {
++    type: reducerType.KEY_Z,
++    data,
++  };
++}
++
+ export default {
+   drop,
+   down,
+@@ -65,4 +72,5 @@ export default {
+   reset,
+   music,
+   pause,
++  z,
+ };
+diff --git a/src/components/keyboard/index.js b/src/components/keyboard/index.js
+index fd608773fd..6809f81996 100644
+--- a/src/components/keyboard/index.js
++++ b/src/components/keyboard/index.js
+@@ -141,6 +141,15 @@ export default class Keyboard extends React.Component {
+           active={keyboard.get('reset')}
+           ref={(c) => { this.dom_r = c; }}
+         />
++        <Button
++          color="green"
++          size="s2"
++          top={0}
++          left={286}
++          label={`${i18n.undo[lan]}(Z)`}
++          active={keyboard.get('z')}
++          ref={(c) => { this.dom_z = c; }}
++        />
+         <Button
+           color="green"
+           size="s2"
+diff --git a/src/control/index.js b/src/control/index.js
+index 25d1c455b4..cc6d0af25a 100644
+--- a/src/control/index.js
++++ b/src/control/index.js
+@@ -10,6 +10,7 @@ const keyboard = {
+   83: 's',
+   82: 'r',
+   80: 'p',
++  90: 'z',
+ };
+ 
+ let keydownActive;
+@@ -17,9 +18,16 @@ let keydownActive;
+ const boardKeys = Object.keys(keyboard).map(e => parseInt(e, 10));
+ 
+ const keyDown = (e) => {
+-  if (e.metaKey === true || boardKeys.indexOf(e.keyCode) === -1) {
++  if (e.keyCode === 90 && (e.ctrlKey || e.metaKey)) {
++    e.preventDefault();
++    // Allow Ctrl+Z to work, fall through to keyboard[90]
++  } else if (e.metaKey === true || boardKeys.indexOf(e.keyCode) === -1) {
++    return;
++  } else if (e.keyCode === 90) {
++    // If just Z is pressed without Ctrl, ignore it (optional, but requested is Ctrl+Z)
+     return;
+   }
++  
+   const type = keyboard[e.keyCode];
+   if (type === keydownActive) {
+     return;
+@@ -29,9 +37,14 @@ const keyDown = (e) => {
+ };
+ 
+ const keyUp = (e) => {
+-  if (e.metaKey === true || boardKeys.indexOf(e.keyCode) === -1) {
++  if (e.keyCode === 90 && (e.ctrlKey || e.metaKey)) {
++    e.preventDefault();
++  } else if (e.metaKey === true || boardKeys.indexOf(e.keyCode) === -1) {
+     return;
++  } else if (e.keyCode === 90) {
++    // let it pass
+   }
++  
+   const type = keyboard[e.keyCode];
+   if (type === keydownActive) {
+     keydownActive = '';
+diff --git a/src/control/todo/index.js b/src/control/todo/index.js
+index ed3995c9b9..2f7004b8c4 100644
+--- a/src/control/todo/index.js
++++ b/src/control/todo/index.js
+@@ -6,6 +6,7 @@ import space from './space';
+ import s from './s';
+ import r from './r';
+ import p from './p';
++import z from './z';
+ 
+ export default {
+   left,
+@@ -16,4 +17,5 @@ export default {
+   r,
+   p,
+   s,
++  z,
+ };
+diff --git a/src/reducers/index.js b/src/reducers/index.js
+index 2407ecc92e..8e34de3456 100644
+--- a/src/reducers/index.js
++++ b/src/reducers/index.js
+@@ -1,4 +1,5 @@
+ import { combineReducers } from 'redux-immutable';
++import { List } from 'immutable';
+ import pause from './pause';
+ import music from './music';
+ import matrix from './matrix';
+@@ -16,8 +17,7 @@ import drop from './drop';
+ import keyboard from './keyboard';
+ import focus from './focus';
+ 
+-
+-const rootReducer = combineReducers({
++const combinedReducer = combineReducers({
+   pause,
+   music,
+   matrix,
+@@ -36,4 +36,49 @@ const rootReducer = combineReducers({
+   focus,
+ });
+ 
++const rootReducer = (state, action) => {
++  if (action.type === 'UNDO') {
++    const past = state.get('past');
++    if (past && past.size > 0) {
++      const previous = past.last();
++      const newPast = past.pop();
++      const future = state.get('future') || List();
++      const currentToRecord = state.delete('past').delete('future').delete('lastRecordTime');
++      
++      return previous.set('past', newPast).set('future', future.push(currentToRecord));
++    }
++    return state;
++  }
++
++  const nextState = combinedReducer(state, action);
++  
++  if (state && state !== nextState) {
++    const recordableActions = ['MOVE_BLOCK', 'MATRIX', 'CLEAR_LINES', 'POINTS'];
++    if (recordableActions.includes(action.type)) {
++      const past = state.get('past') || List();
++      
++      const now = Date.now();
++      const lastRecordTime = state.get('lastRecordTime') || 0;
++      
++      let newPast = past;
++      if (now - lastRecordTime > 50) { // Group actions within 50ms
++        const stateToRecord = state.delete('past').delete('future').delete('lastRecordTime');
++        newPast = past.push(stateToRecord);
++        if (newPast.size > 50) {
++          newPast = newPast.shift();
++        }
++      }
++      
++      return nextState.set('past', newPast).set('future', List()).set('lastRecordTime', now);
++    }
++    
++    return nextState.set('past', state.get('past')).set('future', state.get('future')).set('lastRecordTime', state.get('lastRecordTime'));
++  }
++  
++  if (state) {
++    return nextState.set('past', state.get('past')).set('future', state.get('future')).set('lastRecordTime', state.get('lastRecordTime'));
++  }
++  return nextState;
++};
++
+ export default rootReducer;
+diff --git a/src/reducers/keyboard/index.js b/src/reducers/keyboard/index.js
+index ebda76266c..df8a1b969c 100644
+--- a/src/reducers/keyboard/index.js
++++ b/src/reducers/keyboard/index.js
+@@ -7,6 +7,7 @@ import rotate from './rotate';
+ import reset from './reset';
+ import music from './music';
+ import pause from './pause';
++import z from './z';
+ 
+ const keyboardReducer = combineReducers({
+   drop,
+@@ -17,6 +18,7 @@ const keyboardReducer = combineReducers({
+   reset,
+   music,
+   pause,
++  z,
+ });
+ 
+ export default keyboardReducer;
+diff --git a/src/unit/reducerType.js b/src/unit/reducerType.js
+index 28b0991a5b..6adc7de41d 100644
+--- a/src/unit/reducerType.js
++++ b/src/unit/reducerType.js
+@@ -20,4 +20,6 @@ export const KEY_ROTATE = 'KEY_ROTATE';
+ export const KEY_RESET = 'KEY_RESET';
+ export const KEY_MUSIC = 'KEY_MUSIC';
+ export const KEY_PAUSE = 'KEY_PAUSE';
++export const KEY_Z = 'KEY_Z';
+ export const FOCUS = 'FOCUS';
++export const UNDO = 'UNDO';

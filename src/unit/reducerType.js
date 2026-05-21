@@ -20,4 +20,6 @@ export const KEY_ROTATE = 'KEY_ROTATE';
 export const KEY_RESET = 'KEY_RESET';
 export const KEY_MUSIC = 'KEY_MUSIC';
 export const KEY_PAUSE = 'KEY_PAUSE';
+export const KEY_Z = 'KEY_Z';
 export const FOCUS = 'FOCUS';
+export const UNDO = 'UNDO';

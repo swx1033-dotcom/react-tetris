@@ -108,6 +108,12 @@ function focus(data) {
   };
 }
 
+function undo() {
+  return {
+    type: reducerType.UNDO,
+  };
+}
+
 export default {
   nextBlock,
   moveBlock,
@@ -125,4 +131,5 @@ export default {
   keyboard,
   music,
   focus,
+  undo,
 };

@@ -145,6 +145,15 @@ export default class Keyboard extends React.Component {
           color="green"
           size="s2"
           top={0}
+          left={286}
+          label={`${i18n.undo[lan]}(Z)`}
+          active={keyboard.get('z')}
+          ref={(c) => { this.dom_z = c; }}
+        />
+        <Button
+          color="green"
+          size="s2"
+          top={0}
           left={106}
           label={`${i18n.sound[lan]}(S)`}
           active={keyboard.get('music')}

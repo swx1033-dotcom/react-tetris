@@ -7,6 +7,7 @@ import rotate from './rotate';
 import reset from './reset';
 import music from './music';
 import pause from './pause';
+import z from './z';
 
 const keyboardReducer = combineReducers({
   drop,
@@ -17,6 +18,7 @@ const keyboardReducer = combineReducers({
   reset,
   music,
   pause,
+  z,
 });
 
 export default keyboardReducer;

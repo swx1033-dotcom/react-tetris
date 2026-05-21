@@ -10,6 +10,7 @@ const keyboard = {
   83: 's',
   82: 'r',
   80: 'p',
+  90: 'z',
 };
 
 let keydownActive;
@@ -17,9 +18,16 @@ let keydownActive;
 const boardKeys = Object.keys(keyboard).map(e => parseInt(e, 10));
 
 const keyDown = (e) => {
-  if (e.metaKey === true || boardKeys.indexOf(e.keyCode) === -1) {
+  if (e.keyCode === 90 && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    // Allow Ctrl+Z to work, fall through to keyboard[90]
+  } else if (e.metaKey === true || boardKeys.indexOf(e.keyCode) === -1) {
+    return;
+  } else if (e.keyCode === 90) {
+    // If just Z is pressed without Ctrl, ignore it (optional, but requested is Ctrl+Z)
     return;
   }
+  
   const type = keyboard[e.keyCode];
   if (type === keydownActive) {
     return;
@@ -29,9 +37,14 @@ const keyDown = (e) => {
 };
 
 const keyUp = (e) => {
-  if (e.metaKey === true || boardKeys.indexOf(e.keyCode) === -1) {
+  if (e.keyCode === 90 && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+  } else if (e.metaKey === true || boardKeys.indexOf(e.keyCode) === -1) {
     return;
+  } else if (e.keyCode === 90) {
+    // let it pass
   }
+  
   const type = keyboard[e.keyCode];
   if (type === keydownActive) {
     keydownActive = '';

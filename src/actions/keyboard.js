@@ -56,6 +56,13 @@ function pause(data) {
   };
 }
 
+function z(data) {
+  return {
+    type: reducerType.KEY_Z,
+    data,
+  };
+}
+
 export default {
   drop,
   down,
@@ -65,4 +72,5 @@ export default {
   reset,
   music,
   pause,
+  z,
 };
