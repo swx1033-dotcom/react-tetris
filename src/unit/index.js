@@ -26,6 +26,19 @@ const isFocus = () => {
 };
 
 const unit = {
+  getDropPosition(board, piece, position) {
+    let index = 0;
+    let bottom = { ...piece, xy: position };
+    while (true) {
+      index++;
+      const next = { ...bottom, xy: [position[0] + index, position[1]] };
+      if (!unit.want(next, board)) {
+        break;
+      }
+      bottom = next;
+    }
+    return bottom;
+  },
   getNextType() { // 随机获取下一个方块类型
     const len = blockType.length;
     return blockType[Math.floor(Math.random() * len)];

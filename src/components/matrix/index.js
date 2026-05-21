@@ -4,7 +4,7 @@ import classnames from 'classnames';
 import propTypes from 'prop-types';
 
 import style from './index.less';
-import { isClear } from '../../unit/';
+import { isClear, getDropPosition } from '../../unit/';
 import { fillLine, blankLine } from '../../unit/const';
 import states from '../../control/states';
 
@@ -56,6 +56,8 @@ export default class Matrix extends React.Component {
 
     let matrix = props.matrix;
     const clearLines = this.state.clearLines;
+    let shadow = null;
+
     if (clearLines) {
       const animateColor = this.state.animateColor;
       clearLines.forEach((index) => {
@@ -73,6 +75,23 @@ export default class Matrix extends React.Component {
         ]));
       });
     } else if (shape) {
+      // 先计算影子方块的位置
+      shadow = getDropPosition(matrix, cur, xy.toJS());
+      
+      // 渲染影子方块
+      shadow.shape.forEach((m, k1) => (
+        m.forEach((n, k2) => {
+          if (n && shadow.xy[0] + k1 >= 0) {
+            let line = matrix.get(shadow.xy[0] + k1);
+            if (!line.get(shadow.xy[1] + k2)) { // 只有在空的位置渲染影子
+              line = line.set(shadow.xy[1] + k2, 3); // 3 表示影子方块
+              matrix = matrix.set(shadow.xy[0] + k1, line);
+            }
+          }
+        })
+      ));
+      
+      // 渲染当前活动方块
       shape.forEach((m, k1) => (
         m.forEach((n, k2) => {
           if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
@@ -156,6 +175,7 @@ export default class Matrix extends React.Component {
                 className={classnames({
                   c: e === 1,
                   d: e === 2,
+                  s: e === 3,
                 })}
                 key={k2}
               />)

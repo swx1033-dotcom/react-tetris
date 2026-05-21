@@ -1,0 +1,96 @@
+diff --git a/src/components/matrix/index.js b/src/components/matrix/index.js
+index c4b1d2daf9..f33a05eda1 100644
+--- a/src/components/matrix/index.js
++++ b/src/components/matrix/index.js
+@@ -4,7 +4,7 @@ import classnames from 'classnames';
+ import propTypes from 'prop-types';
+ 
+ import style from './index.less';
+-import { isClear } from '../../unit/';
++import { isClear, getDropPosition } from '../../unit/';
+ import { fillLine, blankLine } from '../../unit/const';
+ import states from '../../control/states';
+ 
+@@ -56,6 +56,8 @@ export default class Matrix extends React.Component {
+ 
+     let matrix = props.matrix;
+     const clearLines = this.state.clearLines;
++    let shadow = null;
++
+     if (clearLines) {
+       const animateColor = this.state.animateColor;
+       clearLines.forEach((index) => {
+@@ -73,6 +75,23 @@ export default class Matrix extends React.Component {
+         ]));
+       });
+     } else if (shape) {
++      // 先计算影子方块的位置
++      shadow = getDropPosition(matrix, cur, xy.toJS());
++      
++      // 渲染影子方块
++      shadow.shape.forEach((m, k1) => (
++        m.forEach((n, k2) => {
++          if (n && shadow.xy[0] + k1 >= 0) {
++            let line = matrix.get(shadow.xy[0] + k1);
++            if (!line.get(shadow.xy[1] + k2)) { // 只有在空的位置渲染影子
++              line = line.set(shadow.xy[1] + k2, 3); // 3 表示影子方块
++              matrix = matrix.set(shadow.xy[0] + k1, line);
++            }
++          }
++        })
++      ));
++      
++      // 渲染当前活动方块
+       shape.forEach((m, k1) => (
+         m.forEach((n, k2) => {
+           if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
+@@ -156,6 +175,7 @@ export default class Matrix extends React.Component {
+                 className={classnames({
+                   c: e === 1,
+                   d: e === 2,
++                  s: e === 3,
+                 })}
+                 key={k2}
+               />)
+diff --git a/src/containers/index.less b/src/containers/index.less
+index ed7e1d45c8..3b788e5214 100644
+--- a/src/containers/index.less
++++ b/src/containers/index.less
+@@ -83,6 +83,13 @@ body{
+           background: #560000;
+         }
+       }
++      &.s {
++        border-color: #000;
++        opacity: 0.4;
++        &:after {
++          background: #000;
++        }
++      }
+     }
+   }
+ }
+diff --git a/src/unit/index.js b/src/unit/index.js
+index e954b23c38..2711e5543b 100644
+--- a/src/unit/index.js
++++ b/src/unit/index.js
+@@ -26,6 +26,19 @@ const isFocus = () => {
+ };
+ 
+ const unit = {
++  getDropPosition(board, piece, position) {
++    let index = 0;
++    let bottom = { ...piece, xy: position };
++    while (true) {
++      index++;
++      const next = { ...bottom, xy: [position[0] + index, position[1]] };
++      if (!unit.want(next, board)) {
++        break;
++      }
++      bottom = next;
++    }
++    return bottom;
++  },
+   getNextType() { // 随机获取下一个方块类型
+     const len = blockType.length;
+     return blockType[Math.floor(Math.random() * len)];
