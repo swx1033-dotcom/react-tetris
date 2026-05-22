@@ -20,7 +20,7 @@
       "fr": "Afficher la source des données",
       "fa": "مشاهده سورس پروژه"
     },
-    "QRCode":{
+    "QRCode": {
       "cn": "二维码",
       "en": "QR code",
       "fr": "QR code",
@@ -74,12 +74,6 @@
       "fr": "Prochain",
       "fa": "بعدی"
     },
-    "pause": {
-      "cn": "暂停",
-      "en": "Pause",
-      "fr": "Pause",
-      "fa": "مکث"
-    },
     "sound": {
       "cn": "音效",
       "en": "Sound",
@@ -121,6 +115,42 @@
       "en": "Drop",
       "fr": "Tomber",
       "fa": "سقوط"
+    },
+    "dailyChallenge": {
+      "cn": "每日挑战",
+      "en": "Daily Challenge",
+      "fr": "Défi Quotidien",
+      "fa": "چالش روزانه"
+    },
+    "leaderboard": {
+      "cn": "排行榜",
+      "en": "Leaderboard",
+      "fr": "Classement",
+      "fa": "رتبه‌بندی"
+    },
+    "yourRank": {
+      "cn": "你的排名",
+      "en": "Your Rank",
+      "fr": "Votre Rang",
+      "fa": "رتبه شما"
+    },
+    "todayHighScore": {
+      "cn": "今日最高分",
+      "en": "Today's High Score",
+      "fr": "Meilleur Score du Jour",
+      "fa": "بالاترین امتیاز امروز"
+    },
+    "rank": {
+      "cn": "排名",
+      "en": "Rank",
+      "fr": "Rang",
+      "fa": "رتبه"
+    },
+    "score": {
+      "cn": "分数",
+      "en": "Score",
+      "fr": "Score",
+      "fa": "امتیاز"
     }
   }
 }

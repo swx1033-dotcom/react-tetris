@@ -62,6 +62,38 @@ const blankMatrix = (() => {
 const clearPoints = [100, 300, 700, 1500];
 
 const StorageKey = 'REACT_TETRIS';
+const DailyChallengeStorageKey = 'REACT_TETRIS_DAILY_CHALLENGE';
+
+const getDateKey = () => {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+};
+
+const getDailyChallengeData = () => {
+  let data = localStorage.getItem(DailyChallengeStorageKey);
+  if (!data) {
+    return null;
+  }
+  try {
+    data = JSON.parse(data);
+    const todayKey = getDateKey();
+    if (data.dateKey !== todayKey) {
+      return null;
+    }
+    return data;
+  } catch (e) {
+    return null;
+  }
+};
+
+const saveDailyChallengeData = (data) => {
+  const todayKey = getDateKey();
+  const dataToSave = {
+    ...data,
+    dateKey: todayKey,
+  };
+  localStorage.setItem(DailyChallengeStorageKey, JSON.stringify(dataToSave));
+};
 
 const lastRecord = (() => { // 上一把的状态
   let data = localStorage.getItem(StorageKey);
@@ -118,6 +150,10 @@ module.exports = {
   blankMatrix,
   clearPoints,
   StorageKey,
+  DailyChallengeStorageKey,
+  getDateKey,
+  getDailyChallengeData,
+  saveDailyChallengeData,
   lastRecord,
   maxPoint,
   eachLines,

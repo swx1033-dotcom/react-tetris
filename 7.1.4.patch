@@ -1,0 +1,713 @@
+diff --git a/i18n.json b/i18n.json
+index 5cb7e3b..9e6c3ff 100644
+--- a/i18n.json
++++ b/i18n.json
+@@ -20,7 +20,7 @@
+       "fr": "Afficher la source des données",
+       "fa": "مشاهده سورس پروژه"
+     },
+-    "QRCode":{
++    "QRCode": {
+       "cn": "二维码",
+       "en": "QR code",
+       "fr": "QR code",
+@@ -74,12 +74,6 @@
+       "fr": "Prochain",
+       "fa": "بعدی"
+     },
+-    "pause": {
+-      "cn": "暂停",
+-      "en": "Pause",
+-      "fr": "Pause",
+-      "fa": "مکث"
+-    },
+     "sound": {
+       "cn": "音效",
+       "en": "Sound",
+@@ -121,6 +115,42 @@
+       "en": "Drop",
+       "fr": "Tomber",
+       "fa": "سقوط"
++    },
++    "dailyChallenge": {
++      "cn": "每日挑战",
++      "en": "Daily Challenge",
++      "fr": "Défi Quotidien",
++      "fa": "چالش روزانه"
++    },
++    "leaderboard": {
++      "cn": "排行榜",
++      "en": "Leaderboard",
++      "fr": "Classement",
++      "fa": "رتبه‌بندی"
++    },
++    "yourRank": {
++      "cn": "你的排名",
++      "en": "Your Rank",
++      "fr": "Votre Rang",
++      "fa": "رتبه شما"
++    },
++    "todayHighScore": {
++      "cn": "今日最高分",
++      "en": "Today's High Score",
++      "fr": "Meilleur Score du Jour",
++      "fa": "بالاترین امتیاز امروز"
++    },
++    "rank": {
++      "cn": "排名",
++      "en": "Rank",
++      "fr": "Rang",
++      "fa": "رتبه"
++    },
++    "score": {
++      "cn": "分数",
++      "en": "Score",
++      "fr": "Score",
++      "fa": "امتیاز"
+     }
+   }
+ }
+diff --git a/src/actions/index.js b/src/actions/index.js
+index 4490c4b..31dba5b 100644
+--- a/src/actions/index.js
++++ b/src/actions/index.js
+@@ -108,21 +108,68 @@ function focus(data) {
+   };
+ }
+ 
++function dailyChallengeMode(data) {
++  return {
++    type: reducerType.DAILY_CHALLENGE_MODE,
++    data,
++  };
++}
++
++function dailyChallengeSeed(data) {
++  return {
++    type: reducerType.DAILY_CHALLENGE_SEED,
++    data,
++  };
++}
++
++function dailyChallengeRng(data) {
++  return {
++    type: reducerType.DAILY_CHALLENGE_RNG,
++    data,
++  };
++}
++
++function dailyChallengeShowLeaderboard(data) {
++  return {
++    type: reducerType.DAILY_CHALLENGE_SHOW_LEADERBOARD,
++    data,
++  };
++}
++
++function dailyChallengeLeaderboard(data) {
++  return {
++    type: reducerType.DAILY_CHALLENGE_LEADERBOARD,
++    data,
++  };
++}
++
++function dailyChallengeHasSubmitted(data) {
++  return {
++    type: reducerType.DAILY_CHALLENGE_HAS_SUBMITTED,
++    data,
++  };
++}
++
++function dailyChallengeHighScore(data) {
++  return {
++    type: reducerType.DAILY_CHALLENGE_HIGH_SCORE,
++    data,
++  };
++}
++
+ export default {
+   nextBlock,
+   moveBlock,
+   speedStart,
+   speedRun,
+   startLines,
+-  matrix,
+-  lock,
+-  clearLines,
+-  points,
+-  reset,
+-  max,
+-  drop,
+-  pause,
+   keyboard,
+-  music,
+   focus,
+-};
++  dailyChallengeMode,
++  dailyChallengeSeed,
++  dailyChallengeRng,
++  dailyChallengeShowLeaderboard,
++  dailyChallengeLeaderboard,
++  dailyChallengeHasSubmitted,
++  dailyChallengeHighScore,
++};
+\ No newline at end of file
+diff --git a/src/actions/keyboard.js b/src/actions/keyboard.js
+index 22f50c9..8d0e831 100644
+--- a/src/actions/keyboard.js
++++ b/src/actions/keyboard.js
+@@ -63,6 +63,3 @@ export default {
+   right,
+   rotate,
+   reset,
+-  music,
+-  pause,
+-};
+diff --git a/src/containers/index.js b/src/containers/index.js
+index 6b0b735..278b74d 100644
+--- a/src/containers/index.js
++++ b/src/containers/index.js
+@@ -9,12 +9,12 @@ import Matrix from '../components/matrix';
+ import Decorate from '../components/decorate';
+ import Number from '../components/number';
+ import Next from '../components/next';
+-import Music from '../components/music';
+ import Pause from '../components/pause';
+ import Point from '../components/point';
+ import Logo from '../components/logo';
+ import Keyboard from '../components/keyboard';
+ import Guide from '../components/guide';
++import DailyChallenge from '../components/dailyChallenge';
+ 
+ import { transform, lastRecord, speeds, i18n, lan } from '../unit/const';
+ import { visibilityChangeEvent, isFocus } from '../unit/';
+@@ -108,12 +108,17 @@ class App extends React.Component {
+                 />
+                 <p>{i18n.next[lan]}</p>
+                 <Next data={this.props.next} />
+-                <div className={style.bottom}>
+-                  <Music data={this.props.music} />
+                   <Pause data={this.props.pause} />
+                   <Number time />
+                 </div>
+               </div>
++              <DailyChallenge
++                leaderboard={this.props.dailyChallengeLeaderboard}
++                dailyChallengeHighScore={this.props.dailyChallengeHighScore}
++                showLeaderboard={this.props.dailyChallengeShowLeaderboard}
++                points={this.props.points}
++                cur={this.props.cur}
++              />
+             </div>
+           </div>
+         </div>
+@@ -133,13 +138,15 @@ App.propTypes = {
+   dispatch: propTypes.func.isRequired,
+   speedStart: propTypes.number.isRequired,
+   speedRun: propTypes.number.isRequired,
+-  startLines: propTypes.number.isRequired,
+   clearLines: propTypes.number.isRequired,
+   points: propTypes.number.isRequired,
+   max: propTypes.number.isRequired,
+   reset: propTypes.bool.isRequired,
+   drop: propTypes.bool.isRequired,
+   keyboard: propTypes.object.isRequired,
++  dailyChallengeLeaderboard: propTypes.array.isRequired,
++  dailyChallengeHighScore: propTypes.number.isRequired,
++  dailyChallengeShowLeaderboard: propTypes.bool.isRequired,
+ };
+ 
+ const mapStateToProps = (state) => ({
+@@ -152,11 +159,14 @@ const mapStateToProps = (state) => ({
+   speedRun: state.get('speedRun'),
+   startLines: state.get('startLines'),
+   clearLines: state.get('clearLines'),
+-  points: state.get('points'),
+   max: state.get('max'),
+   reset: state.get('reset'),
+   drop: state.get('drop'),
+   keyboard: state.get('keyboard'),
++  points: state.get('points'),
++  dailyChallengeLeaderboard: state.get('dailyChallengeLeaderboard'),
++  dailyChallengeHighScore: state.get('dailyChallengeHighScore'),
++  dailyChallengeShowLeaderboard: state.get('dailyChallengeShowLeaderboard'),
+ });
+ 
+ export default connect(mapStateToProps)(App);
+diff --git a/src/control/states.js b/src/control/states.js
+index 4787b2f..9faef68 100644
+--- a/src/control/states.js
++++ b/src/control/states.js
+@@ -1,19 +1,18 @@
+ import { List } from 'immutable';
+ import store from '../store';
+-import { want, isClear, isOver } from '../unit/';
++import { want, isClear, isOver, SeededRandom, getDateSeed, getNextTypeWithSeed } from '../unit';
+ import actions from '../actions';
+-import { speeds, blankLine, blankMatrix, clearPoints, eachLines } from '../unit/const';
++import { speeds, blankLine, blankMatrix, clearPoints, eachLines, saveDailyChallengeData } from '../unit/const';
+ import { music } from '../unit/music';
+ 
+-
+-const getStartMatrix = (startLines) => { // 生成startLines
+-  const getLine = (min, max) => { // 返回标亮个数在min~max之间一行方块, (包含边界)
++const getStartMatrix = (startLines) => {
++  const getLine = (min, max) => {
+     const count = parseInt((((max - min) + 1) * Math.random()) + min, 10);
+     const line = [];
+-    for (let i = 0; i < count; i++) { // 插入高亮
++    for (let i = 0; i < count; i++) {
+       line.push(1);
+     }
+-    for (let i = 0, len = 10 - count; i < len; i++) { // 在随机位置插入灰色
++    for (let i = 0, len = 10 - count; i < len; i++) {
+       const index = parseInt(((line.length + 1) * Math.random()), 10);
+       line.splice(index, 0, 0);
+     }
+@@ -23,25 +22,71 @@ const getStartMatrix = (startLines) => { // 生成startLines
+   let startMatrix = List([]);
+ 
+   for (let i = 0; i < startLines; i++) {
+-    if (i <= 2) { // 0-3
++    if (i <= 2) {
+       startMatrix = startMatrix.push(getLine(5, 8));
+-    } else if (i <= 6) { // 4-6
++    } else if (i <= 6) {
+       startMatrix = startMatrix.push(getLine(4, 9));
+-    } else { // 7-9
++    } else {
+       startMatrix = startMatrix.push(getLine(3, 9));
+     }
+   }
+-  for (let i = 0, len = 20 - startLines; i < len; i++) { // 插入上部分的灰色
++  for (let i = 0, len = 20 - startLines; i < len; i++) {
+     startMatrix = startMatrix.unshift(List(blankLine));
+   }
+   return startMatrix;
+ };
+ 
++const getDailyChallengeStartMatrix = (rng, numObstacles = 3) => {
++  let startMatrix = blankMatrix;
++  
++  for (let i = 0; i < numObstacles; i++) {
++    const row = rng.nextInt(10, 19);
++    const col = rng.nextInt(0, 9);
++    
++    let currentRow = startMatrix.get(row);
++    if (!currentRow.get(col)) {
++      currentRow = currentRow.set(col, 1);
++      startMatrix = startMatrix.set(row, currentRow);
++    }
++  }
++  
++  return startMatrix;
++};
++
++const submitDailyChallengeScore = (score) => {
++  const state = store.getState();
++  const hasSubmitted = state.get('dailyChallengeHasSubmitted');
++  const currentHighScore = state.get('dailyChallengeHighScore');
++  let leaderboard = state.get('dailyChallengeLeaderboard');
++  
++  if (!hasSubmitted || score > currentHighScore) {
++    const newEntry = {
++      score,
++      timestamp: Date.now()
++    };
++    
++    leaderboard = [...leaderboard, newEntry];
++    leaderboard.sort((a, b) => b.score - a.score);
++    leaderboard = leaderboard.slice(0, 10);
++    
++    store.dispatch(actions.dailyChallengeLeaderboard(leaderboard));
++    store.dispatch(actions.dailyChallengeHasSubmitted(true));
++    
++    if (score > currentHighScore) {
++      store.dispatch(actions.dailyChallengeHighScore(score));
++    }
++    
++    saveDailyChallengeData({
++      leaderboard,
++      hasSubmitted: true,
++      highScore: Math.max(score, currentHighScore)
++    });
++  }
++};
++
+ const states = {
+-  // 自动下落setTimeout变量
+   fallInterval: null,
+ 
+-  // 游戏开始
+   start: () => {
+     if (music.start) {
+       music.start();
+@@ -57,7 +102,40 @@ const states = {
+     states.auto();
+   },
+ 
+-  // 自动下落
++  startDailyChallenge: () => {
++    if (music.start) {
++      music.start();
++    }
++    
++    const seed = getDateSeed();
++    const rng = new SeededRandom(seed);
++    
++    store.dispatch(actions.dailyChallengeMode(true));
++    store.dispatch(actions.dailyChallengeSeed(seed));
++    store.dispatch(actions.dailyChallengeRng(rng));
++    store.dispatch(actions.dailyChallengeShowLeaderboard(false));
++    
++    states.dispatchPoints(0);
++    store.dispatch(actions.speedRun(1));
++    
++    const startMatrix = getDailyChallengeStartMatrix(rng);
++    store.dispatch(actions.matrix(startMatrix));
++    
++    const firstType = getNextTypeWithSeed(rng);
++    const secondType = getNextTypeWithSeed(rng);
++    
++    store.dispatch(actions.moveBlock({ type: firstType }));
++    store.dispatch(actions.nextBlock(secondType));
++    states.auto();
++  },
++
++  nextBlockDaily: () => {
++    const state = store.getState();
++    const rng = state.get('dailyChallengeRng');
++    const nextType = getNextTypeWithSeed(rng);
++    store.dispatch(actions.nextBlock(nextType));
++  },
++
+   auto: (timeout) => {
+     const out = (timeout < 0 ? 0 : timeout);
+     let state = store.getState();
+@@ -75,7 +153,7 @@ const states = {
+         const xy = cur && cur.xy;
+         shape.forEach((m, k1) => (
+           m.forEach((n, k2) => {
+-            if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
++            if (n && xy.get(0) + k1 >= 0) {
+               let line = matrix.get(xy.get(0) + k1);
+               line = line.set(xy.get(1) + k2, 1);
+               matrix = matrix.set(xy.get(0) + k1, line);
+@@ -90,7 +168,6 @@ const states = {
+       out === undefined ? speeds[state.get('speedRun') - 1] : out);
+   },
+ 
+-  // 一个方块结束, 触发下一个
+   nextAround: (matrix, stopDownTrigger) => {
+     clearTimeout(states.fallInterval);
+     store.dispatch(actions.lock(true));
+@@ -100,7 +177,7 @@ const states = {
+     }
+ 
+     const addPoints = (store.getState().get('points') + 10) +
+-      ((store.getState().get('speedRun') - 1) * 2); // 速度越快, 得分越高
++      ((store.getState().get('speedRun') - 1) * 2);
+ 
+     states.dispatchPoints(addPoints);
+ 
+@@ -120,12 +197,18 @@ const states = {
+     setTimeout(() => {
+       store.dispatch(actions.lock(false));
+       store.dispatch(actions.moveBlock({ type: store.getState().get('next') }));
+-      store.dispatch(actions.nextBlock());
++      
++      const state = store.getState();
++      if (state.get('dailyChallengeMode')) {
++        states.nextBlockDaily();
++      } else {
++        store.dispatch(actions.nextBlock());
++      }
++      
+       states.auto();
+     }, 100);
+   },
+ 
+-  // 页面焦点变换
+   focus: (isFocus) => {
+     store.dispatch(actions.focus(isFocus));
+     if (!isFocus) {
+@@ -138,7 +221,6 @@ const states = {
+     }
+   },
+ 
+-  // 暂停
+   pause: (isPause) => {
+     store.dispatch(actions.pause(isPause));
+     if (isPause) {
+@@ -148,7 +230,6 @@ const states = {
+     states.auto();
+   },
+ 
+-  // 消除行
+   clearLines: (matrix, lines) => {
+     const state = store.getState();
+     let newMatrix = matrix;
+@@ -158,32 +239,47 @@ const states = {
+     });
+     store.dispatch(actions.matrix(newMatrix));
+     store.dispatch(actions.moveBlock({ type: state.get('next') }));
+-    store.dispatch(actions.nextBlock());
++    
++    if (state.get('dailyChallengeMode')) {
++      states.nextBlockDaily();
++    } else {
++      store.dispatch(actions.nextBlock());
++    }
++    
+     states.auto();
+     store.dispatch(actions.lock(false));
+     const clearLines = state.get('clearLines') + lines.length;
+-    store.dispatch(actions.clearLines(clearLines)); // 更新消除行
++    store.dispatch(actions.clearLines(clearLines));
+ 
+     const addPoints = store.getState().get('points') +
+-      clearPoints[lines.length - 1]; // 一次消除的行越多, 加分越多
++      clearPoints[lines.length - 1];
+     states.dispatchPoints(addPoints);
+ 
+-    const speedAdd = Math.floor(clearLines / eachLines); // 消除行数, 增加对应速度
++    const speedAdd = Math.floor(clearLines / eachLines);
+     let speedNow = state.get('speedStart') + speedAdd;
+     speedNow = speedNow > 6 ? 6 : speedNow;
+     store.dispatch(actions.speedRun(speedNow));
+   },
+ 
+-  // 游戏结束, 触发动画
+   overStart: () => {
+     clearTimeout(states.fallInterval);
+     store.dispatch(actions.lock(true));
+     store.dispatch(actions.reset(true));
+     store.dispatch(actions.pause(false));
++    
++    const state = store.getState();
++    if (state.get('dailyChallengeMode')) {
++      submitDailyChallengeScore(state.get('points'));
++      store.dispatch(actions.dailyChallengeShowLeaderboard(true));
++    }
+   },
+ 
+-  // 游戏结束动画完成
+   overEnd: () => {
++    const state = store.getState();
++    if (state.get('dailyChallengeMode')) {
++      store.dispatch(actions.dailyChallengeMode(false));
++    }
++    
+     store.dispatch(actions.matrix(blankMatrix));
+     store.dispatch(actions.moveBlock({ reset: true }));
+     store.dispatch(actions.reset(false));
+@@ -191,13 +287,18 @@ const states = {
+     store.dispatch(actions.clearLines(0));
+   },
+ 
+-  // 写入分数
+-  dispatchPoints: (point) => { // 写入分数, 同时判断是否创造最高分
++  dispatchPoints: (point) => {
+     store.dispatch(actions.points(point));
+-    if (point > 0 && point > store.getState().get('max')) {
++    
++    const state = store.getState();
++    if (!state.get('dailyChallengeMode') && point > 0 && point > state.get('max')) {
+       store.dispatch(actions.max(point));
+     }
+   },
++  
++  showLeaderboard: (show) => {
++    store.dispatch(actions.dailyChallengeShowLeaderboard(show));
++  },
+ };
+ 
+-export default states;
++export default states;
+\ No newline at end of file
+diff --git a/src/control/todo/index.js b/src/control/todo/index.js
+index ed3995c..2f7004b 100644
+--- a/src/control/todo/index.js
++++ b/src/control/todo/index.js
+@@ -6,6 +6,7 @@ import space from './space';
+ import s from './s';
+ import r from './r';
+ import p from './p';
++import z from './z';
+ 
+ export default {
+   left,
+@@ -16,4 +17,5 @@ export default {
+   r,
+   p,
+   s,
++  z,
+ };
+diff --git a/src/reducers/index.js b/src/reducers/index.js
+index 2407ecc..5add448 100644
+--- a/src/reducers/index.js
++++ b/src/reducers/index.js
+@@ -15,7 +15,13 @@ import reset from './reset';
+ import drop from './drop';
+ import keyboard from './keyboard';
+ import focus from './focus';
+-
++import dailyChallengeMode from './dailyChallengeMode';
++import dailyChallengeSeed from './dailyChallengeSeed';
++import dailyChallengeRng from './dailyChallengeRng';
++import dailyChallengeShowLeaderboard from './dailyChallengeShowLeaderboard';
++import dailyChallengeLeaderboard from './dailyChallengeLeaderboard';
++import dailyChallengeHasSubmitted from './dailyChallengeHasSubmitted';
++import dailyChallengeHighScore from './dailyChallengeHighScore';
+ 
+ const rootReducer = combineReducers({
+   pause,
+@@ -34,6 +40,13 @@ const rootReducer = combineReducers({
+   drop,
+   keyboard,
+   focus,
++  dailyChallengeMode,
++  dailyChallengeSeed,
++  dailyChallengeRng,
++  dailyChallengeShowLeaderboard,
++  dailyChallengeLeaderboard,
++  dailyChallengeHasSubmitted,
++  dailyChallengeHighScore,
+ });
+ 
+ export default rootReducer;
+diff --git a/src/reducers/keyboard/index.js b/src/reducers/keyboard/index.js
+index ebda762..6cc2089 100644
+--- a/src/reducers/keyboard/index.js
++++ b/src/reducers/keyboard/index.js
+@@ -7,6 +7,7 @@ import rotate from './rotate';
+ import reset from './reset';
+ import music from './music';
+ import pause from './pause';
++import undo from './undo';
+ 
+ const keyboardReducer = combineReducers({
+   drop,
+@@ -17,6 +18,7 @@ const keyboardReducer = combineReducers({
+   reset,
+   music,
+   pause,
++  undo,
+ });
+ 
+ export default keyboardReducer;
+diff --git a/src/unit/const.js b/src/unit/const.js
+index 14c3006..098ed0a 100644
+--- a/src/unit/const.js
++++ b/src/unit/const.js
+@@ -62,6 +62,38 @@ const blankMatrix = (() => {
+ const clearPoints = [100, 300, 700, 1500];
+ 
+ const StorageKey = 'REACT_TETRIS';
++const DailyChallengeStorageKey = 'REACT_TETRIS_DAILY_CHALLENGE';
++
++const getDateKey = () => {
++  const today = new Date();
++  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
++};
++
++const getDailyChallengeData = () => {
++  let data = localStorage.getItem(DailyChallengeStorageKey);
++  if (!data) {
++    return null;
++  }
++  try {
++    data = JSON.parse(data);
++    const todayKey = getDateKey();
++    if (data.dateKey !== todayKey) {
++      return null;
++    }
++    return data;
++  } catch (e) {
++    return null;
++  }
++};
++
++const saveDailyChallengeData = (data) => {
++  const todayKey = getDateKey();
++  const dataToSave = {
++    ...data,
++    dateKey: todayKey,
++  };
++  localStorage.setItem(DailyChallengeStorageKey, JSON.stringify(dataToSave));
++};
+ 
+ const lastRecord = (() => { // 上一把的状态
+   let data = localStorage.getItem(StorageKey);
+@@ -118,6 +150,10 @@ module.exports = {
+   blankMatrix,
+   clearPoints,
+   StorageKey,
++  DailyChallengeStorageKey,
++  getDateKey,
++  getDailyChallengeData,
++  saveDailyChallengeData,
+   lastRecord,
+   maxPoint,
+   eachLines,
+diff --git a/src/unit/index.js b/src/unit/index.js
+index e954b23..7cb5da5 100644
+--- a/src/unit/index.js
++++ b/src/unit/index.js
+@@ -1,5 +1,25 @@
+ import { blockType, StorageKey } from './const';
+ 
++class SeededRandom {
++  constructor(seed) {
++    this.seed = seed;
++  }
++  
++  next() {
++    this.seed = (this.seed * 9301 + 49297) % 233280;
++    return this.seed / 233280;
++  }
++  
++  nextInt(min, max) {
++    return Math.floor(this.next() * (max - min + 1)) + min;
++  }
++}
++
++const getDateSeed = () => {
++  const today = new Date();
++  return today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
++};
++
+ const hiddenProperty = (() => { // document[hiddenProperty] 可以判断页面是否失焦
+   let names = [
+     'hidden',
+@@ -26,10 +46,16 @@ const isFocus = () => {
+ };
+ 
+ const unit = {
++  SeededRandom,
++  getDateSeed,
+   getNextType() { // 随机获取下一个方块类型
+     const len = blockType.length;
+     return blockType[Math.floor(Math.random() * len)];
+   },
++  getNextTypeWithSeed(rng) { // 基于种子获取下一个方块类型
++    const len = blockType.length;
++    return blockType[rng.nextInt(0, len - 1)];
++  },
+   want(next, matrix) { // 方块是否能移到到指定位置
+     const xy = next.xy;
+     const shape = next.shape;
+diff --git a/src/unit/reducerType.js b/src/unit/reducerType.js
+index 28b0991..da0b80e 100644
+--- a/src/unit/reducerType.js
++++ b/src/unit/reducerType.js
+@@ -21,3 +21,10 @@ export const KEY_RESET = 'KEY_RESET';
+ export const KEY_MUSIC = 'KEY_MUSIC';
+ export const KEY_PAUSE = 'KEY_PAUSE';
+ export const FOCUS = 'FOCUS';
++export const DAILY_CHALLENGE_MODE = 'DAILY_CHALLENGE_MODE';
++export const DAILY_CHALLENGE_SEED = 'DAILY_CHALLENGE_SEED';
++export const DAILY_CHALLENGE_RNG = 'DAILY_CHALLENGE_RNG';
++export const DAILY_CHALLENGE_SHOW_LEADERBOARD = 'DAILY_CHALLENGE_SHOW_LEADERBOARD';
++export const DAILY_CHALLENGE_LEADERBOARD = 'DAILY_CHALLENGE_LEADERBOARD';
++export const DAILY_CHALLENGE_HAS_SUBMITTED = 'DAILY_CHALLENGE_HAS_SUBMITTED';
++export const DAILY_CHALLENGE_HIGH_SCORE = 'DAILY_CHALLENGE_HIGH_SCORE';

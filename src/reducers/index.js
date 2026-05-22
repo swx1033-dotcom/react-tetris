@@ -15,7 +15,13 @@ import reset from './reset';
 import drop from './drop';
 import keyboard from './keyboard';
 import focus from './focus';
-
+import dailyChallengeMode from './dailyChallengeMode';
+import dailyChallengeSeed from './dailyChallengeSeed';
+import dailyChallengeRng from './dailyChallengeRng';
+import dailyChallengeShowLeaderboard from './dailyChallengeShowLeaderboard';
+import dailyChallengeLeaderboard from './dailyChallengeLeaderboard';
+import dailyChallengeHasSubmitted from './dailyChallengeHasSubmitted';
+import dailyChallengeHighScore from './dailyChallengeHighScore';
 
 const rootReducer = combineReducers({
   pause,
@@ -34,6 +40,13 @@ const rootReducer = combineReducers({
   drop,
   keyboard,
   focus,
+  dailyChallengeMode,
+  dailyChallengeSeed,
+  dailyChallengeRng,
+  dailyChallengeShowLeaderboard,
+  dailyChallengeLeaderboard,
+  dailyChallengeHasSubmitted,
+  dailyChallengeHighScore,
 });
 
 export default rootReducer;

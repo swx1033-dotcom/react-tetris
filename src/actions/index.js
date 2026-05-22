@@ -108,21 +108,68 @@ function focus(data) {
   };
 }
 
+function dailyChallengeMode(data) {
+  return {
+    type: reducerType.DAILY_CHALLENGE_MODE,
+    data,
+  };
+}
+
+function dailyChallengeSeed(data) {
+  return {
+    type: reducerType.DAILY_CHALLENGE_SEED,
+    data,
+  };
+}
+
+function dailyChallengeRng(data) {
+  return {
+    type: reducerType.DAILY_CHALLENGE_RNG,
+    data,
+  };
+}
+
+function dailyChallengeShowLeaderboard(data) {
+  return {
+    type: reducerType.DAILY_CHALLENGE_SHOW_LEADERBOARD,
+    data,
+  };
+}
+
+function dailyChallengeLeaderboard(data) {
+  return {
+    type: reducerType.DAILY_CHALLENGE_LEADERBOARD,
+    data,
+  };
+}
+
+function dailyChallengeHasSubmitted(data) {
+  return {
+    type: reducerType.DAILY_CHALLENGE_HAS_SUBMITTED,
+    data,
+  };
+}
+
+function dailyChallengeHighScore(data) {
+  return {
+    type: reducerType.DAILY_CHALLENGE_HIGH_SCORE,
+    data,
+  };
+}
+
 export default {
   nextBlock,
   moveBlock,
   speedStart,
   speedRun,
   startLines,
-  matrix,
-  lock,
-  clearLines,
-  points,
-  reset,
-  max,
-  drop,
-  pause,
   keyboard,
-  music,
   focus,
+  dailyChallengeMode,
+  dailyChallengeSeed,
+  dailyChallengeRng,
+  dailyChallengeShowLeaderboard,
+  dailyChallengeLeaderboard,
+  dailyChallengeHasSubmitted,
+  dailyChallengeHighScore,
 };

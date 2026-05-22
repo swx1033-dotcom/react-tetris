@@ -63,6 +63,3 @@ export default {
   right,
   rotate,
   reset,
-  music,
-  pause,
-};

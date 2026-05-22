@@ -9,12 +9,12 @@ import Matrix from '../components/matrix';
 import Decorate from '../components/decorate';
 import Number from '../components/number';
 import Next from '../components/next';
-import Music from '../components/music';
 import Pause from '../components/pause';
 import Point from '../components/point';
 import Logo from '../components/logo';
 import Keyboard from '../components/keyboard';
 import Guide from '../components/guide';
+import DailyChallenge from '../components/dailyChallenge';
 
 import { transform, lastRecord, speeds, i18n, lan } from '../unit/const';
 import { visibilityChangeEvent, isFocus } from '../unit/';
@@ -108,12 +108,17 @@ class App extends React.Component {
                 />
                 <p>{i18n.next[lan]}</p>
                 <Next data={this.props.next} />
-                <div className={style.bottom}>
-                  <Music data={this.props.music} />
                   <Pause data={this.props.pause} />
                   <Number time />
                 </div>
               </div>
+              <DailyChallenge
+                leaderboard={this.props.dailyChallengeLeaderboard}
+                dailyChallengeHighScore={this.props.dailyChallengeHighScore}
+                showLeaderboard={this.props.dailyChallengeShowLeaderboard}
+                points={this.props.points}
+                cur={this.props.cur}
+              />
             </div>
           </div>
         </div>
@@ -133,13 +138,15 @@ App.propTypes = {
   dispatch: propTypes.func.isRequired,
   speedStart: propTypes.number.isRequired,
   speedRun: propTypes.number.isRequired,
-  startLines: propTypes.number.isRequired,
   clearLines: propTypes.number.isRequired,
   points: propTypes.number.isRequired,
   max: propTypes.number.isRequired,
   reset: propTypes.bool.isRequired,
   drop: propTypes.bool.isRequired,
   keyboard: propTypes.object.isRequired,
+  dailyChallengeLeaderboard: propTypes.array.isRequired,
+  dailyChallengeHighScore: propTypes.number.isRequired,
+  dailyChallengeShowLeaderboard: propTypes.bool.isRequired,
 };
 
 const mapStateToProps = (state) => ({
@@ -152,11 +159,14 @@ const mapStateToProps = (state) => ({
   speedRun: state.get('speedRun'),
   startLines: state.get('startLines'),
   clearLines: state.get('clearLines'),
-  points: state.get('points'),
   max: state.get('max'),
   reset: state.get('reset'),
   drop: state.get('drop'),
   keyboard: state.get('keyboard'),
+  points: state.get('points'),
+  dailyChallengeLeaderboard: state.get('dailyChallengeLeaderboard'),
+  dailyChallengeHighScore: state.get('dailyChallengeHighScore'),
+  dailyChallengeShowLeaderboard: state.get('dailyChallengeShowLeaderboard'),
 });
 
 export default connect(mapStateToProps)(App);

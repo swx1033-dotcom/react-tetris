@@ -1,5 +1,25 @@
 import { blockType, StorageKey } from './const';
 
+class SeededRandom {
+  constructor(seed) {
+    this.seed = seed;
+  }
+  
+  next() {
+    this.seed = (this.seed * 9301 + 49297) % 233280;
+    return this.seed / 233280;
+  }
+  
+  nextInt(min, max) {
+    return Math.floor(this.next() * (max - min + 1)) + min;
+  }
+}
+
+const getDateSeed = () => {
+  const today = new Date();
+  return today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+};
+
 const hiddenProperty = (() => { // document[hiddenProperty] 可以判断页面是否失焦
   let names = [
     'hidden',
@@ -26,9 +46,15 @@ const isFocus = () => {
 };
 
 const unit = {
+  SeededRandom,
+  getDateSeed,
   getNextType() { // 随机获取下一个方块类型
     const len = blockType.length;
     return blockType[Math.floor(Math.random() * len)];
+  },
+  getNextTypeWithSeed(rng) { // 基于种子获取下一个方块类型
+    const len = blockType.length;
+    return blockType[rng.nextInt(0, len - 1)];
   },
   want(next, matrix) { // 方块是否能移到到指定位置
     const xy = next.xy;

@@ -1,0 +1,140 @@
+.dailyChallengeButtonContainer {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 100;
+}
+
+.dailyChallengeButton {
+  padding: 10px 20px;
+  font-size: 16px;
+  background: linear-gradient(to bottom, #ff9500, #ff6b00);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  }
+  
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.leaderboardButton {
+  padding: 10px 20px;
+  font-size: 16px;
+  background: linear-gradient(to bottom, #4bc441, #0ec400);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  }
+  
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.leaderboard {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  z-index: 200;
+  min-width: 300px;
+  text-align: center;
+  
+  h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #ff9500;
+  }
+  
+  .todayHighScore {
+    margin-bottom: 15px;
+    color: #4bc441;
+  }
+  
+  .leaderboardList {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+  }
+  
+  .leaderboardItem {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    
+    &:first-child {
+      .rank {
+        color: #ffd700;
+        font-weight: bold;
+      }
+    }
+    
+    &:nth-child(2) {
+      .rank {
+        color: #c0c0c0;
+        font-weight: bold;
+      }
+    }
+    
+    &:nth-child(3) {
+      .rank {
+        color: #cd7f32;
+        font-weight: bold;
+      }
+    }
+  }
+  
+  .yourRank {
+    color: #ff9500;
+    margin-bottom: 15px;
+  }
+  
+  .closeButton {
+    padding: 10px 30px;
+    font-size: 16px;
+    background: linear-gradient(to bottom, #4bc441, #0ec400);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+}
+
+.leaderboardEmpty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  z-index: 200;
+  text-align: center;
+}
