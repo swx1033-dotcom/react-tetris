@@ -1,12 +1,13 @@
-import { getNextType } from '../unit';
+import { getNextType, getChallengeNextType } from '../unit';
 import * as reducerType from '../unit/reducerType';
 import Block from '../unit/block';
 import keyboard from './keyboard';
 
-function nextBlock(next = getNextType()) {
+function nextBlock(next = getNextType(), index = null) {
+  const type = index !== null ? getChallengeNextType(index) : next;
   return {
     type: reducerType.NEXT_BLOCK,
-    data: next,
+    data: type,
   };
 }
 
@@ -108,6 +109,55 @@ function focus(data) {
   };
 }
 
+function challengeMode(data) {
+  return {
+    type: reducerType.CHALLENGE_MODE,
+    data,
+  };
+}
+
+function challengeSequence(data) {
+  return {
+    type: reducerType.CHALLENGE_SEQUENCE,
+    data,
+  };
+}
+
+function challengeSequenceIndex(data) {
+  return {
+    type: reducerType.CHALLENGE_SEQUENCE_INDEX,
+    data,
+  };
+}
+
+function challengeMax(data) {
+  return {
+    type: reducerType.CHALLENGE_MAX,
+    data,
+  };
+}
+
+function challengeSubmitted(data) {
+  return {
+    type: reducerType.CHALLENGE_SUBMITTED,
+    data,
+  };
+}
+
+function challengeRanking(data) {
+  return {
+    type: reducerType.CHALLENGE_RANKING,
+    data,
+  };
+}
+
+function challengePosition(data) {
+  return {
+    type: reducerType.CHALLENGE_POSITION,
+    data,
+  };
+}
+
 export default {
   nextBlock,
   moveBlock,
@@ -125,4 +175,11 @@ export default {
   keyboard,
   music,
   focus,
+  challengeMode,
+  challengeSequence,
+  challengeSequenceIndex,
+  challengeMax,
+  challengeSubmitted,
+  challengeRanking,
+  challengePosition,
 };

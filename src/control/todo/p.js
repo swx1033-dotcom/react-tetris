@@ -14,10 +14,15 @@ const down = (store) => {
       }
       const cur = state.get('cur');
       const isPause = state.get('pause');
-      if (cur !== null) { // 暂停
+      if (cur !== null) {
         states.pause(!isPause);
-      } else { // 新的开始
-        states.start();
+      } else {
+        const isChallenge = state.get('challengeMode');
+        if (isChallenge) {
+          states.startChallenge();
+        } else {
+          states.start();
+        }
       }
     },
   });

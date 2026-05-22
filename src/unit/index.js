@@ -1,4 +1,5 @@
 import { blockType, StorageKey } from './const';
+import dailyChallenge from './dailyChallenge';
 
 const hiddenProperty = (() => { // document[hiddenProperty] 可以判断页面是否失焦
   let names = [
@@ -25,8 +26,20 @@ const isFocus = () => {
   return !document[hiddenProperty];
 };
 
+let challengeSequenceRef = null;
+
 const unit = {
+  setChallengeSequence(sequence) {
+    challengeSequenceRef = sequence;
+  },
   getNextType() { // 随机获取下一个方块类型
+    const len = blockType.length;
+    return blockType[Math.floor(Math.random() * len)];
+  },
+  getChallengeNextType(index) {
+    if (challengeSequenceRef && challengeSequenceRef[index]) {
+      return challengeSequenceRef[index];
+    }
     const len = blockType.length;
     return blockType[Math.floor(Math.random() * len)];
   },
@@ -98,6 +111,7 @@ const unit = {
   },
   visibilityChangeEvent,
   isFocus,
+  dailyChallenge,
 };
 
 module.exports = unit;

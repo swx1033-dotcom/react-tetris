@@ -23,7 +23,12 @@ const down = (store) => {
         if (store.getState().get('lock')) {
           return;
         }
-        states.start();
+        const isChallenge = store.getState().get('challengeMode');
+        if (isChallenge) {
+          states.startChallenge();
+        } else {
+          states.start();
+        }
       },
     });
   }

@@ -121,6 +121,60 @@
       "en": "Drop",
       "fr": "Tomber",
       "fa": "سقوط"
+    },
+    "dailyChallenge": {
+      "cn": "每日挑战",
+      "en": "Daily Challenge",
+      "fr": "Défi Quotidien",
+      "fa": "چالش روزانه"
+    },
+    "challengeMode": {
+      "cn": "挑战模式",
+      "en": "Challenge Mode",
+      "fr": "Mode Défi",
+      "fa": "حالت چالش"
+    },
+    "challengeRanking": {
+      "cn": "当日排名",
+      "en": "Daily Ranking",
+      "fr": "Classement du Jour",
+      "fa": "رتبه روزانه"
+    },
+    "challengePosition": {
+      "cn": "你的排名",
+      "en": "Your Rank",
+      "fr": "Votre Rang",
+      "fa": "رتبه شما"
+    },
+    "challengeHighest": {
+      "cn": "当日最高分",
+      "en": "Daily High Score",
+      "fr": "Meilleur Score du Jour",
+      "fa": "بالاترین امتیاز روز"
+    },
+    "challengeSubmitted": {
+      "cn": "已提交",
+      "en": "Submitted",
+      "fr": "Soumis",
+      "fa": "ارسال شده"
+    },
+    "challengeNotSubmitted": {
+      "cn": "未提交",
+      "en": "Not Submitted",
+      "fr": "Non Soumis",
+      "fa": "ارسال نشده"
+    },
+    "startChallenge": {
+      "cn": "开始挑战",
+      "en": "Start Challenge",
+      "fr": "Commencer le Défi",
+      "fa": "شروع چالش"
+    },
+    "backToNormal": {
+      "cn": "返回普通模式",
+      "en": "Back to Normal",
+      "fr": "Retour au Normal",
+      "fa": "بازگشت به حالت عادی"
     }
   }
 }

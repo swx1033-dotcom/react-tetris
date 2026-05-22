@@ -15,7 +15,7 @@ const down = (store) => {
         return;
       }
       const cur = state.get('cur');
-      if (cur !== null) { // 置底
+      if (cur !== null) {
         if (state.get('pause')) {
           states.pause(false);
           return;
@@ -36,7 +36,7 @@ const down = (store) => {
         const xy = bottom.xy;
         shape.forEach((m, k1) => (
           m.forEach((n, k2) => {
-            if (n && xy[0] + k1 >= 0) { // 竖坐标可以为负
+            if (n && xy[0] + k1 >= 0) {
               let line = matrix.get(xy[0] + k1);
               line = line.set(xy[1] + k2, 1);
               matrix = matrix.set(xy[0] + k1, line);
@@ -49,7 +49,12 @@ const down = (store) => {
         }, 100);
         states.nextAround(matrix);
       } else {
-        states.start();
+        const isChallenge = state.get('challengeMode');
+        if (isChallenge) {
+          states.startChallenge();
+        } else {
+          states.start();
+        }
       }
     },
   });

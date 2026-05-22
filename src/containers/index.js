@@ -15,10 +15,12 @@ import Point from '../components/point';
 import Logo from '../components/logo';
 import Keyboard from '../components/keyboard';
 import Guide from '../components/guide';
+import DailyChallenge from '../components/dailyChallenge';
 
 import { transform, lastRecord, speeds, i18n, lan } from '../unit/const';
-import { visibilityChangeEvent, isFocus } from '../unit/';
+import { visibilityChangeEvent, isFocus, dailyChallenge } from '../unit/';
 import states from '../control/states';
+import actions from '../actions';
 
 class App extends React.Component {
   constructor() {
@@ -36,6 +38,19 @@ class App extends React.Component {
       document.addEventListener(visibilityChangeEvent, () => {
         states.focus(isFocus());
       }, false);
+    }
+
+    const challengeData = dailyChallenge.getDailyChallengeData();
+    const ranking = dailyChallenge.getRanking();
+    if (ranking.length > 0) {
+      this.props.dispatch(actions.challengeRanking(ranking));
+    }
+    if (challengeData) {
+      this.props.dispatch(actions.challengeMode(true));
+      this.props.dispatch(actions.challengeSequence(challengeData.sequence));
+      this.props.dispatch(actions.challengeSequenceIndex(challengeData.sequenceIndex || 0));
+      this.props.dispatch(actions.challengeSubmitted(challengeData.submitted || false));
+      require('../unit').setChallengeSequence(challengeData.sequence);
     }
 
     if (lastRecord) { // 读取记录
@@ -111,6 +126,7 @@ class App extends React.Component {
                 <div className={style.bottom}>
                   <Music data={this.props.music} />
                   <Pause data={this.props.pause} />
+                  <DailyChallenge />
                   <Number time />
                 </div>
               </div>

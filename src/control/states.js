@@ -1,6 +1,6 @@
 import { List } from 'immutable';
 import store from '../store';
-import { want, isClear, isOver } from '../unit/';
+import { want, isClear, isOver, dailyChallenge } from '../unit/';
 import actions from '../actions';
 import { speeds, blankLine, blankMatrix, clearPoints, eachLines } from '../unit/const';
 import { music } from '../unit/music';
@@ -54,6 +54,28 @@ const states = {
     store.dispatch(actions.matrix(startMatrix));
     store.dispatch(actions.moveBlock({ type: state.get('next') }));
     store.dispatch(actions.nextBlock());
+    states.auto();
+  },
+
+  // 每日挑战开始
+  startChallenge: () => {
+    if (music.start) {
+      music.start();
+    }
+    const challengeData = dailyChallenge.initChallengeSequence();
+    store.dispatch(actions.challengeSequence(challengeData.sequence));
+    store.dispatch(actions.challengeSequenceIndex(0));
+    require('../unit').setChallengeSequence(challengeData.sequence);
+    states.dispatchPoints(0);
+    store.dispatch(actions.challengeMax(0));
+    store.dispatch(actions.speedRun(1));
+    const obstacles = challengeData.obstacles;
+    store.dispatch(actions.matrix(obstacles));
+    const firstType = challengeData.sequence[0];
+    const secondType = challengeData.sequence[1];
+    store.dispatch(actions.nextBlock(firstType, 0));
+    store.dispatch(actions.moveBlock({ type: firstType }));
+    store.dispatch(actions.nextBlock(secondType, 1));
     states.auto();
   },
 
@@ -114,13 +136,26 @@ const states = {
       if (music.gameover) {
         music.gameover();
       }
+      const state = store.getState();
+      if (state.get('challengeMode')) {
+        states.submitChallengeScore();
+      }
       states.overStart();
       return;
     }
     setTimeout(() => {
       store.dispatch(actions.lock(false));
-      store.dispatch(actions.moveBlock({ type: store.getState().get('next') }));
-      store.dispatch(actions.nextBlock());
+      const state = store.getState();
+      const nextType = state.get('next');
+      const isChallenge = state.get('challengeMode');
+      store.dispatch(actions.moveBlock({ type: nextType }));
+      if (isChallenge) {
+        const nextIndex = state.get('challengeSequenceIndex') + 1;
+        store.dispatch(actions.challengeSequenceIndex(nextIndex));
+        store.dispatch(actions.nextBlock(state.get('challengeSequence')[nextIndex], nextIndex));
+      } else {
+        store.dispatch(actions.nextBlock());
+      }
       states.auto();
     }, 100);
   },
@@ -161,14 +196,14 @@ const states = {
     store.dispatch(actions.nextBlock());
     states.auto();
     store.dispatch(actions.lock(false));
-    const clearLines = state.get('clearLines') + lines.length;
-    store.dispatch(actions.clearLines(clearLines)); // 更新消除行
+    const clearLinesCount = state.get('clearLines') + lines.length;
+    store.dispatch(actions.clearLines(clearLinesCount)); // 更新消除行
 
     const addPoints = store.getState().get('points') +
       clearPoints[lines.length - 1]; // 一次消除的行越多, 加分越多
     states.dispatchPoints(addPoints);
 
-    const speedAdd = Math.floor(clearLines / eachLines); // 消除行数, 增加对应速度
+    const speedAdd = Math.floor(clearLinesCount / eachLines); // 消除行数, 增加对应速度
     let speedNow = state.get('speedStart') + speedAdd;
     speedNow = speedNow > 6 ? 6 : speedNow;
     store.dispatch(actions.speedRun(speedNow));
@@ -194,9 +229,26 @@ const states = {
   // 写入分数
   dispatchPoints: (point) => { // 写入分数, 同时判断是否创造最高分
     store.dispatch(actions.points(point));
-    if (point > 0 && point > store.getState().get('max')) {
+    const state = store.getState();
+    if (point > 0 && point > state.get('max')) {
       store.dispatch(actions.max(point));
     }
+    if (point > 0 && state.get('challengeMode') && point > state.get('challengeMax')) {
+      store.dispatch(actions.challengeMax(point));
+    }
+  },
+
+  // 提交挑战分数
+  submitChallengeScore: () => {
+    const state = store.getState();
+    if (!state.get('challengeMode')) return;
+    const score = state.get('points');
+    const submitted = state.get('challengeSubmitted');
+    if (submitted) return;
+    const result = dailyChallenge.submitScore(score);
+    store.dispatch(actions.challengeRanking(result.ranking));
+    store.dispatch(actions.challengePosition(result.position));
+    store.dispatch(actions.challengeSubmitted(true));
   },
 };
 

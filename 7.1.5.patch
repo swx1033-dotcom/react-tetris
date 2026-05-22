@@ -1,0 +1,482 @@
+diff --git a/i18n.json b/i18n.json
+index 5cb7e3b..8efce84 100644
+--- a/i18n.json
++++ b/i18n.json
+@@ -121,6 +121,60 @@
+       "en": "Drop",
+       "fr": "Tomber",
+       "fa": "سقوط"
++    },
++    "dailyChallenge": {
++      "cn": "每日挑战",
++      "en": "Daily Challenge",
++      "fr": "Défi Quotidien",
++      "fa": "چالش روزانه"
++    },
++    "challengeMode": {
++      "cn": "挑战模式",
++      "en": "Challenge Mode",
++      "fr": "Mode Défi",
++      "fa": "حالت چالش"
++    },
++    "challengeRanking": {
++      "cn": "当日排名",
++      "en": "Daily Ranking",
++      "fr": "Classement du Jour",
++      "fa": "رتبه روزانه"
++    },
++    "challengePosition": {
++      "cn": "你的排名",
++      "en": "Your Rank",
++      "fr": "Votre Rang",
++      "fa": "رتبه شما"
++    },
++    "challengeHighest": {
++      "cn": "当日最高分",
++      "en": "Daily High Score",
++      "fr": "Meilleur Score du Jour",
++      "fa": "بالاترین امتیاز روز"
++    },
++    "challengeSubmitted": {
++      "cn": "已提交",
++      "en": "Submitted",
++      "fr": "Soumis",
++      "fa": "ارسال شده"
++    },
++    "challengeNotSubmitted": {
++      "cn": "未提交",
++      "en": "Not Submitted",
++      "fr": "Non Soumis",
++      "fa": "ارسال نشده"
++    },
++    "startChallenge": {
++      "cn": "开始挑战",
++      "en": "Start Challenge",
++      "fr": "Commencer le Défi",
++      "fa": "شروع چالش"
++    },
++    "backToNormal": {
++      "cn": "返回普通模式",
++      "en": "Back to Normal",
++      "fr": "Retour au Normal",
++      "fa": "بازگشت به حالت عادی"
+     }
+   }
+ }
+diff --git a/src/actions/index.js b/src/actions/index.js
+index 4490c4b..c480336 100644
+--- a/src/actions/index.js
++++ b/src/actions/index.js
+@@ -1,12 +1,13 @@
+-import { getNextType } from '../unit';
++import { getNextType, getChallengeNextType } from '../unit';
+ import * as reducerType from '../unit/reducerType';
+ import Block from '../unit/block';
+ import keyboard from './keyboard';
+ 
+-function nextBlock(next = getNextType()) {
++function nextBlock(next = getNextType(), index = null) {
++  const type = index !== null ? getChallengeNextType(index) : next;
+   return {
+     type: reducerType.NEXT_BLOCK,
+-    data: next,
++    data: type,
+   };
+ }
+ 
+@@ -108,6 +109,55 @@ function focus(data) {
+   };
+ }
+ 
++function challengeMode(data) {
++  return {
++    type: reducerType.CHALLENGE_MODE,
++    data,
++  };
++}
++
++function challengeSequence(data) {
++  return {
++    type: reducerType.CHALLENGE_SEQUENCE,
++    data,
++  };
++}
++
++function challengeSequenceIndex(data) {
++  return {
++    type: reducerType.CHALLENGE_SEQUENCE_INDEX,
++    data,
++  };
++}
++
++function challengeMax(data) {
++  return {
++    type: reducerType.CHALLENGE_MAX,
++    data,
++  };
++}
++
++function challengeSubmitted(data) {
++  return {
++    type: reducerType.CHALLENGE_SUBMITTED,
++    data,
++  };
++}
++
++function challengeRanking(data) {
++  return {
++    type: reducerType.CHALLENGE_RANKING,
++    data,
++  };
++}
++
++function challengePosition(data) {
++  return {
++    type: reducerType.CHALLENGE_POSITION,
++    data,
++  };
++}
++
+ export default {
+   nextBlock,
+   moveBlock,
+@@ -125,4 +175,11 @@ export default {
+   keyboard,
+   music,
+   focus,
++  challengeMode,
++  challengeSequence,
++  challengeSequenceIndex,
++  challengeMax,
++  challengeSubmitted,
++  challengeRanking,
++  challengePosition,
+ };
+diff --git a/src/containers/index.js b/src/containers/index.js
+index 6b0b735..3cbd75a 100644
+--- a/src/containers/index.js
++++ b/src/containers/index.js
+@@ -15,10 +15,12 @@ import Point from '../components/point';
+ import Logo from '../components/logo';
+ import Keyboard from '../components/keyboard';
+ import Guide from '../components/guide';
++import DailyChallenge from '../components/dailyChallenge';
+ 
+ import { transform, lastRecord, speeds, i18n, lan } from '../unit/const';
+-import { visibilityChangeEvent, isFocus } from '../unit/';
++import { visibilityChangeEvent, isFocus, dailyChallenge } from '../unit/';
+ import states from '../control/states';
++import actions from '../actions';
+ 
+ class App extends React.Component {
+   constructor() {
+@@ -38,6 +40,19 @@ class App extends React.Component {
+       }, false);
+     }
+ 
++    const challengeData = dailyChallenge.getDailyChallengeData();
++    const ranking = dailyChallenge.getRanking();
++    if (ranking.length > 0) {
++      this.props.dispatch(actions.challengeRanking(ranking));
++    }
++    if (challengeData) {
++      this.props.dispatch(actions.challengeMode(true));
++      this.props.dispatch(actions.challengeSequence(challengeData.sequence));
++      this.props.dispatch(actions.challengeSequenceIndex(challengeData.sequenceIndex || 0));
++      this.props.dispatch(actions.challengeSubmitted(challengeData.submitted || false));
++      require('../unit').setChallengeSequence(challengeData.sequence);
++    }
++
+     if (lastRecord) { // 读取记录
+       if (lastRecord.cur && !lastRecord.pause) { // 拿到上一次游戏的状态, 如果在游戏中且没有暂停, 游戏继续
+         const speedRun = this.props.speedRun;
+@@ -111,6 +126,7 @@ class App extends React.Component {
+                 <div className={style.bottom}>
+                   <Music data={this.props.music} />
+                   <Pause data={this.props.pause} />
++                  <DailyChallenge />
+                   <Number time />
+                 </div>
+               </div>
+diff --git a/src/control/states.js b/src/control/states.js
+index 4787b2f..81ff967 100644
+--- a/src/control/states.js
++++ b/src/control/states.js
+@@ -1,6 +1,6 @@
+ import { List } from 'immutable';
+ import store from '../store';
+-import { want, isClear, isOver } from '../unit/';
++import { want, isClear, isOver, dailyChallenge } from '../unit/';
+ import actions from '../actions';
+ import { speeds, blankLine, blankMatrix, clearPoints, eachLines } from '../unit/const';
+ import { music } from '../unit/music';
+@@ -57,6 +57,28 @@ const states = {
+     states.auto();
+   },
+ 
++  // 每日挑战开始
++  startChallenge: () => {
++    if (music.start) {
++      music.start();
++    }
++    const challengeData = dailyChallenge.initChallengeSequence();
++    store.dispatch(actions.challengeSequence(challengeData.sequence));
++    store.dispatch(actions.challengeSequenceIndex(0));
++    require('../unit').setChallengeSequence(challengeData.sequence);
++    states.dispatchPoints(0);
++    store.dispatch(actions.challengeMax(0));
++    store.dispatch(actions.speedRun(1));
++    const obstacles = challengeData.obstacles;
++    store.dispatch(actions.matrix(obstacles));
++    const firstType = challengeData.sequence[0];
++    const secondType = challengeData.sequence[1];
++    store.dispatch(actions.nextBlock(firstType, 0));
++    store.dispatch(actions.moveBlock({ type: firstType }));
++    store.dispatch(actions.nextBlock(secondType, 1));
++    states.auto();
++  },
++
+   // 自动下落
+   auto: (timeout) => {
+     const out = (timeout < 0 ? 0 : timeout);
+@@ -114,13 +136,26 @@ const states = {
+       if (music.gameover) {
+         music.gameover();
+       }
++      const state = store.getState();
++      if (state.get('challengeMode')) {
++        states.submitChallengeScore();
++      }
+       states.overStart();
+       return;
+     }
+     setTimeout(() => {
+       store.dispatch(actions.lock(false));
+-      store.dispatch(actions.moveBlock({ type: store.getState().get('next') }));
+-      store.dispatch(actions.nextBlock());
++      const state = store.getState();
++      const nextType = state.get('next');
++      const isChallenge = state.get('challengeMode');
++      store.dispatch(actions.moveBlock({ type: nextType }));
++      if (isChallenge) {
++        const nextIndex = state.get('challengeSequenceIndex') + 1;
++        store.dispatch(actions.challengeSequenceIndex(nextIndex));
++        store.dispatch(actions.nextBlock(state.get('challengeSequence')[nextIndex], nextIndex));
++      } else {
++        store.dispatch(actions.nextBlock());
++      }
+       states.auto();
+     }, 100);
+   },
+@@ -161,14 +196,14 @@ const states = {
+     store.dispatch(actions.nextBlock());
+     states.auto();
+     store.dispatch(actions.lock(false));
+-    const clearLines = state.get('clearLines') + lines.length;
+-    store.dispatch(actions.clearLines(clearLines)); // 更新消除行
++    const clearLinesCount = state.get('clearLines') + lines.length;
++    store.dispatch(actions.clearLines(clearLinesCount)); // 更新消除行
+ 
+     const addPoints = store.getState().get('points') +
+       clearPoints[lines.length - 1]; // 一次消除的行越多, 加分越多
+     states.dispatchPoints(addPoints);
+ 
+-    const speedAdd = Math.floor(clearLines / eachLines); // 消除行数, 增加对应速度
++    const speedAdd = Math.floor(clearLinesCount / eachLines); // 消除行数, 增加对应速度
+     let speedNow = state.get('speedStart') + speedAdd;
+     speedNow = speedNow > 6 ? 6 : speedNow;
+     store.dispatch(actions.speedRun(speedNow));
+@@ -194,9 +229,26 @@ const states = {
+   // 写入分数
+   dispatchPoints: (point) => { // 写入分数, 同时判断是否创造最高分
+     store.dispatch(actions.points(point));
+-    if (point > 0 && point > store.getState().get('max')) {
++    const state = store.getState();
++    if (point > 0 && point > state.get('max')) {
+       store.dispatch(actions.max(point));
+     }
++    if (point > 0 && state.get('challengeMode') && point > state.get('challengeMax')) {
++      store.dispatch(actions.challengeMax(point));
++    }
++  },
++
++  // 提交挑战分数
++  submitChallengeScore: () => {
++    const state = store.getState();
++    if (!state.get('challengeMode')) return;
++    const score = state.get('points');
++    const submitted = state.get('challengeSubmitted');
++    if (submitted) return;
++    const result = dailyChallenge.submitScore(score);
++    store.dispatch(actions.challengeRanking(result.ranking));
++    store.dispatch(actions.challengePosition(result.position));
++    store.dispatch(actions.challengeSubmitted(true));
+   },
+ };
+ 
+diff --git a/src/control/todo/p.js b/src/control/todo/p.js
+index 3e7330f..656da2d 100644
+--- a/src/control/todo/p.js
++++ b/src/control/todo/p.js
+@@ -14,10 +14,15 @@ const down = (store) => {
+       }
+       const cur = state.get('cur');
+       const isPause = state.get('pause');
+-      if (cur !== null) { // 暂停
++      if (cur !== null) {
+         states.pause(!isPause);
+-      } else { // 新的开始
+-        states.start();
++      } else {
++        const isChallenge = state.get('challengeMode');
++        if (isChallenge) {
++          states.startChallenge();
++        } else {
++          states.start();
++        }
+       }
+     },
+   });
+diff --git a/src/control/todo/r.js b/src/control/todo/r.js
+index 642e4eb..afcabd8 100644
+--- a/src/control/todo/r.js
++++ b/src/control/todo/r.js
+@@ -23,7 +23,12 @@ const down = (store) => {
+         if (store.getState().get('lock')) {
+           return;
+         }
+-        states.start();
++        const isChallenge = store.getState().get('challengeMode');
++        if (isChallenge) {
++          states.startChallenge();
++        } else {
++          states.start();
++        }
+       },
+     });
+   }
+diff --git a/src/control/todo/space.js b/src/control/todo/space.js
+index 700659d..29d9d28 100644
+--- a/src/control/todo/space.js
++++ b/src/control/todo/space.js
+@@ -15,7 +15,7 @@ const down = (store) => {
+         return;
+       }
+       const cur = state.get('cur');
+-      if (cur !== null) { // 置底
++      if (cur !== null) {
+         if (state.get('pause')) {
+           states.pause(false);
+           return;
+@@ -36,7 +36,7 @@ const down = (store) => {
+         const xy = bottom.xy;
+         shape.forEach((m, k1) => (
+           m.forEach((n, k2) => {
+-            if (n && xy[0] + k1 >= 0) { // 竖坐标可以为负
++            if (n && xy[0] + k1 >= 0) {
+               let line = matrix.get(xy[0] + k1);
+               line = line.set(xy[1] + k2, 1);
+               matrix = matrix.set(xy[0] + k1, line);
+@@ -49,7 +49,12 @@ const down = (store) => {
+         }, 100);
+         states.nextAround(matrix);
+       } else {
+-        states.start();
++        const isChallenge = state.get('challengeMode');
++        if (isChallenge) {
++          states.startChallenge();
++        } else {
++          states.start();
++        }
+       }
+     },
+   });
+diff --git a/src/reducers/index.js b/src/reducers/index.js
+index 2407ecc..b38ba6a 100644
+--- a/src/reducers/index.js
++++ b/src/reducers/index.js
+@@ -15,6 +15,13 @@ import reset from './reset';
+ import drop from './drop';
+ import keyboard from './keyboard';
+ import focus from './focus';
++import challengeMode from './challengeMode';
++import challengeSequence from './challengeSequence';
++import challengeSequenceIndex from './challengeSequenceIndex';
++import challengeMax from './challengeMax';
++import challengeSubmitted from './challengeSubmitted';
++import challengeRanking from './challengeRanking';
++import challengePosition from './challengePosition';
+ 
+ 
+ const rootReducer = combineReducers({
+@@ -34,6 +41,13 @@ const rootReducer = combineReducers({
+   drop,
+   keyboard,
+   focus,
++  challengeMode,
++  challengeSequence,
++  challengeSequenceIndex,
++  challengeMax,
++  challengeSubmitted,
++  challengeRanking,
++  challengePosition,
+ });
+ 
+ export default rootReducer;
+diff --git a/src/unit/index.js b/src/unit/index.js
+index e954b23..3239e3d 100644
+--- a/src/unit/index.js
++++ b/src/unit/index.js
+@@ -1,4 +1,5 @@
+ import { blockType, StorageKey } from './const';
++import dailyChallenge from './dailyChallenge';
+ 
+ const hiddenProperty = (() => { // document[hiddenProperty] 可以判断页面是否失焦
+   let names = [
+@@ -25,11 +26,23 @@ const isFocus = () => {
+   return !document[hiddenProperty];
+ };
+ 
++let challengeSequenceRef = null;
++
+ const unit = {
++  setChallengeSequence(sequence) {
++    challengeSequenceRef = sequence;
++  },
+   getNextType() { // 随机获取下一个方块类型
+     const len = blockType.length;
+     return blockType[Math.floor(Math.random() * len)];
+   },
++  getChallengeNextType(index) {
++    if (challengeSequenceRef && challengeSequenceRef[index]) {
++      return challengeSequenceRef[index];
++    }
++    const len = blockType.length;
++    return blockType[Math.floor(Math.random() * len)];
++  },
+   want(next, matrix) { // 方块是否能移到到指定位置
+     const xy = next.xy;
+     const shape = next.shape;
+@@ -98,6 +111,7 @@ const unit = {
+   },
+   visibilityChangeEvent,
+   isFocus,
++  dailyChallenge,
+ };
+ 
+ module.exports = unit;
+diff --git a/src/unit/reducerType.js b/src/unit/reducerType.js
+index 28b0991..3cb287a 100644
+--- a/src/unit/reducerType.js
++++ b/src/unit/reducerType.js
+@@ -21,3 +21,10 @@ export const KEY_RESET = 'KEY_RESET';
+ export const KEY_MUSIC = 'KEY_MUSIC';
+ export const KEY_PAUSE = 'KEY_PAUSE';
+ export const FOCUS = 'FOCUS';
++export const CHALLENGE_MODE = 'CHALLENGE_MODE';
++export const CHALLENGE_SEQUENCE = 'CHALLENGE_SEQUENCE';
++export const CHALLENGE_SEQUENCE_INDEX = 'CHALLENGE_SEQUENCE_INDEX';
++export const CHALLENGE_MAX = 'CHALLENGE_MAX';
++export const CHALLENGE_SUBMITTED = 'CHALLENGE_SUBMITTED';
++export const CHALLENGE_RANKING = 'CHALLENGE_RANKING';
++export const CHALLENGE_POSITION = 'CHALLENGE_POSITION';

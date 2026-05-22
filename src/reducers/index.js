@@ -15,6 +15,13 @@ import reset from './reset';
 import drop from './drop';
 import keyboard from './keyboard';
 import focus from './focus';
+import challengeMode from './challengeMode';
+import challengeSequence from './challengeSequence';
+import challengeSequenceIndex from './challengeSequenceIndex';
+import challengeMax from './challengeMax';
+import challengeSubmitted from './challengeSubmitted';
+import challengeRanking from './challengeRanking';
+import challengePosition from './challengePosition';
 
 
 const rootReducer = combineReducers({
@@ -34,6 +41,13 @@ const rootReducer = combineReducers({
   drop,
   keyboard,
   focus,
+  challengeMode,
+  challengeSequence,
+  challengeSequenceIndex,
+  challengeMax,
+  challengeSubmitted,
+  challengeRanking,
+  challengePosition,
 });
 
 export default rootReducer;
