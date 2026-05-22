@@ -1,0 +1,256 @@
+diff --git a/i18n.json b/i18n.json
+index 5cb7e3b..608537d 100644
+--- a/i18n.json
++++ b/i18n.json
+@@ -121,6 +121,12 @@
+       "en": "Drop",
+       "fr": "Tomber",
+       "fa": "سقوط"
++    },
++    "undo": {
++      "cn": "撤销",
++      "en": "Undo",
++      "fr": "Annuler",
++      "fa": "بازگشت"
+     }
+   }
+ }
+diff --git a/src/actions/index.js b/src/actions/index.js
+index 4490c4b..764de67 100644
+--- a/src/actions/index.js
++++ b/src/actions/index.js
+@@ -108,6 +108,13 @@ function focus(data) {
+   };
+ }
+ 
++function undo(data) {
++  return {
++    type: reducerType.UNDO,
++    data,
++  };
++}
++
+ export default {
+   nextBlock,
+   moveBlock,
+@@ -125,4 +132,5 @@ export default {
+   keyboard,
+   music,
+   focus,
++  undo,
+ };
+diff --git a/src/actions/keyboard.js b/src/actions/keyboard.js
+index 22f50c9..97ce1e9 100644
+--- a/src/actions/keyboard.js
++++ b/src/actions/keyboard.js
+@@ -56,6 +56,13 @@ function pause(data) {
+   };
+ }
+ 
++function undo(data) {
++  return {
++    type: reducerType.UNDO,
++    data,
++  };
++}
++
+ export default {
+   drop,
+   down,
+@@ -65,4 +72,5 @@ export default {
+   reset,
+   music,
+   pause,
++  undo,
+ };
+diff --git a/src/components/keyboard/index.js b/src/components/keyboard/index.js
+index fd60877..aa41735 100644
+--- a/src/components/keyboard/index.js
++++ b/src/components/keyboard/index.js
+@@ -41,6 +41,16 @@ export default class Keyboard extends React.Component {
+     }, true);
+ 
+     Object.keys(todo).forEach((key) => {
++      if (key === 'z') {
++        this[`dom_${key}`].dom.addEventListener('mousedown', () => {
++          todo[key].down(store);
++        }, true);
++        this[`dom_${key}`].dom.addEventListener('touchstart', (e) => {
++          e.preventDefault();
++          todo[key].down(store);
++        }, true);
++        return;
++      }
+       this[`dom_${key}`].dom.addEventListener('mousedown', () => {
+         if (touchEventCatch[key] === true) {
+           return;
+@@ -159,6 +169,15 @@ export default class Keyboard extends React.Component {
+           active={keyboard.get('pause')}
+           ref={(c) => { this.dom_p = c; }}
+         />
++        <Button
++          color="red"
++          size="s2"
++          top={0}
++          left={286}
++          label={`${i18n.undo[lan]} (Ctrl+Z)`}
++          active={false}
++          ref={(c) => { this.dom_z = c; }}
++        />
+       </div>
+     );
+   }
+diff --git a/src/control/index.js b/src/control/index.js
+index 25d1c45..c31bf0b 100644
+--- a/src/control/index.js
++++ b/src/control/index.js
+@@ -10,6 +10,7 @@ const keyboard = {
+   83: 's',
+   82: 'r',
+   80: 'p',
++  90: 'z',
+ };
+ 
+ let keydownActive;
+@@ -21,6 +22,10 @@ const keyDown = (e) => {
+     return;
+   }
+   const type = keyboard[e.keyCode];
++  if (type === 'z' && e.ctrlKey) {
++    todo.z.down(store);
++    return;
++  }
+   if (type === keydownActive) {
+     return;
+   }
+@@ -33,6 +38,9 @@ const keyUp = (e) => {
+     return;
+   }
+   const type = keyboard[e.keyCode];
++  if (type === 'z' && e.ctrlKey) {
++    return;
++  }
+   if (type === keydownActive) {
+     keydownActive = '';
+   }
+diff --git a/src/control/todo/index.js b/src/control/todo/index.js
+index ed3995c..2f7004b 100644
+--- a/src/control/todo/index.js
++++ b/src/control/todo/index.js
+@@ -6,6 +6,7 @@ import space from './space';
+ import s from './s';
+ import r from './r';
+ import p from './p';
++import z from './z';
+ 
+ export default {
+   left,
+@@ -16,4 +17,5 @@ export default {
+   r,
+   p,
+   s,
++  z,
+ };
+diff --git a/src/reducers/index.js b/src/reducers/index.js
+index 2407ecc..2bf0901 100644
+--- a/src/reducers/index.js
++++ b/src/reducers/index.js
+@@ -1,4 +1,5 @@
+ import { combineReducers } from 'redux-immutable';
++import * as reducerType from '../unit/reducerType';
+ import pause from './pause';
+ import music from './music';
+ import matrix from './matrix';
+@@ -15,9 +16,10 @@ import reset from './reset';
+ import drop from './drop';
+ import keyboard from './keyboard';
+ import focus from './focus';
++import undo from './undo';
+ 
+ 
+-const rootReducer = combineReducers({
++const appReducer = combineReducers({
+   pause,
+   music,
+   matrix,
+@@ -34,6 +36,16 @@ const rootReducer = combineReducers({
+   drop,
+   keyboard,
+   focus,
++  undo,
+ });
+ 
++const rootReducer = (state, action) => {
++  if (action.type === reducerType.UNDO && action.undoState) {
++    return action.undoState
++      .set('undo', (state ? state.get('undo') : 0) + 1)
++      .set('lock', false);
++  }
++  return appReducer(state, action);
++};
++
+ export default rootReducer;
+diff --git a/src/store/index.js b/src/store/index.js
+index f643782..0449a3e 100644
+--- a/src/store/index.js
++++ b/src/store/index.js
+@@ -1,6 +1,48 @@
+-import { createStore } from 'redux';
++import { createStore, applyMiddleware, compose } from 'redux';
++import { List } from 'immutable';
+ import rootReducer from '../reducers';
++import * as reducerType from '../unit/reducerType';
+ 
+-const store = createStore(rootReducer, window.devToolsExtension && window.devToolsExtension());
++const MAX_HISTORY = 50;
++let past = List();
++let future = List();
++
++const recordableActions = [
++  reducerType.MATRIX,
++];
++
++const undoMiddleware = store => next => (action) => {
++  if (action.type === reducerType.UNDO) {
++    if (past.size === 0) {
++      return;
++    }
++    const current = store.getState();
++    future = future.push(current);
++    const previous = past.last();
++    past = past.pop();
++    return next({ ...action, undoState: previous });
++  }
++
++  if (recordableActions.indexOf(action.type) !== -1) {
++    const state = store.getState();
++    if (state.get('cur') !== null) {
++      past = past.push(state).slice(-MAX_HISTORY);
++      future = List();
++    }
++  }
++
++  return next(action);
++};
++
++let enhancer = applyMiddleware(undoMiddleware);
++if (window.devToolsExtension) {
++  enhancer = compose(window.devToolsExtension(), enhancer);
++}
++
++const store = createStore(rootReducer, enhancer);
++
++export function getUndoCount() {
++  return past.size;
++}
+ 
+ export default store;
+diff --git a/src/unit/reducerType.js b/src/unit/reducerType.js
+index 28b0991..c15b4e0 100644
+--- a/src/unit/reducerType.js
++++ b/src/unit/reducerType.js
+@@ -21,3 +21,4 @@ export const KEY_RESET = 'KEY_RESET';
+ export const KEY_MUSIC = 'KEY_MUSIC';
+ export const KEY_PAUSE = 'KEY_PAUSE';
+ export const FOCUS = 'FOCUS';
++export const UNDO = 'UNDO';

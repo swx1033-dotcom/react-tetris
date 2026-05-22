@@ -10,6 +10,7 @@ const keyboard = {
   83: 's',
   82: 'r',
   80: 'p',
+  90: 'z',
 };
 
 let keydownActive;
@@ -21,6 +22,10 @@ const keyDown = (e) => {
     return;
   }
   const type = keyboard[e.keyCode];
+  if (type === 'z' && e.ctrlKey) {
+    todo.z.down(store);
+    return;
+  }
   if (type === keydownActive) {
     return;
   }
@@ -33,6 +38,9 @@ const keyUp = (e) => {
     return;
   }
   const type = keyboard[e.keyCode];
+  if (type === 'z' && e.ctrlKey) {
+    return;
+  }
   if (type === keydownActive) {
     keydownActive = '';
   }

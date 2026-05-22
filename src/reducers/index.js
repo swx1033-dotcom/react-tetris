@@ -1,4 +1,5 @@
 import { combineReducers } from 'redux-immutable';
+import * as reducerType from '../unit/reducerType';
 import pause from './pause';
 import music from './music';
 import matrix from './matrix';
@@ -15,9 +16,10 @@ import reset from './reset';
 import drop from './drop';
 import keyboard from './keyboard';
 import focus from './focus';
+import undo from './undo';
 
 
-const rootReducer = combineReducers({
+const appReducer = combineReducers({
   pause,
   music,
   matrix,
@@ -34,6 +36,16 @@ const rootReducer = combineReducers({
   drop,
   keyboard,
   focus,
+  undo,
 });
+
+const rootReducer = (state, action) => {
+  if (action.type === reducerType.UNDO && action.undoState) {
+    return action.undoState
+      .set('undo', (state ? state.get('undo') : 0) + 1)
+      .set('lock', false);
+  }
+  return appReducer(state, action);
+};
 
 export default rootReducer;

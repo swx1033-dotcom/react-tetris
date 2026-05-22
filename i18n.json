@@ -121,6 +121,12 @@
       "en": "Drop",
       "fr": "Tomber",
       "fa": "سقوط"
+    },
+    "undo": {
+      "cn": "撤销",
+      "en": "Undo",
+      "fr": "Annuler",
+      "fa": "بازگشت"
     }
   }
 }

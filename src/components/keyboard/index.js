@@ -41,6 +41,16 @@ export default class Keyboard extends React.Component {
     }, true);
 
     Object.keys(todo).forEach((key) => {
+      if (key === 'z') {
+        this[`dom_${key}`].dom.addEventListener('mousedown', () => {
+          todo[key].down(store);
+        }, true);
+        this[`dom_${key}`].dom.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          todo[key].down(store);
+        }, true);
+        return;
+      }
       this[`dom_${key}`].dom.addEventListener('mousedown', () => {
         if (touchEventCatch[key] === true) {
           return;
@@ -158,6 +168,15 @@ export default class Keyboard extends React.Component {
           label={`${i18n.pause[lan]}(P)`}
           active={keyboard.get('pause')}
           ref={(c) => { this.dom_p = c; }}
+        />
+        <Button
+          color="red"
+          size="s2"
+          top={0}
+          left={286}
+          label={`${i18n.undo[lan]} (Ctrl+Z)`}
+          active={false}
+          ref={(c) => { this.dom_z = c; }}
         />
       </div>
     );
