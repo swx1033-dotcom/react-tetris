@@ -121,6 +121,48 @@
       "en": "Drop",
       "fr": "Tomber",
       "fa": "سقوط"
+    },
+    "dailyChallenge": {
+      "cn": "每日挑战",
+      "en": "Daily Challenge",
+      "fr": "Défi Quotidien",
+      "fa": "چالش روزانه"
+    },
+    "dailyYourScore": {
+      "cn": "你的得分",
+      "en": "Your Score",
+      "fr": "Votre Score",
+      "fa": "امتیاز شما"
+    },
+    "dailyHighest": {
+      "cn": "当日最高分",
+      "en": "Today's Highest",
+      "fr": "Record du Jour",
+      "fa": "بالاترین امروز"
+    },
+    "dailyYourRank": {
+      "cn": "你的排名",
+      "en": "Your Rank",
+      "fr": "Votre Rang",
+      "fa": "رتبه شما"
+    },
+    "dailyRanking": {
+      "cn": "排行榜 (前10名)",
+      "en": "Rankings (Top 10)",
+      "fr": "Classement (Top 10)",
+      "fa": "رتبه‌بندی (۱۰ نفر)"
+    },
+    "dailyClose": {
+      "cn": "关闭",
+      "en": "Close",
+      "fr": "Fermer",
+      "fa": "بستن"
+    },
+    "dailyNoRecords": {
+      "cn": "暂无排名记录",
+      "en": "No records yet",
+      "fr": "Aucun enregistrement",
+      "fa": "بدون رکورد"
     }
   }
 }

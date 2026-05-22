@@ -15,6 +15,7 @@ import Point from '../components/point';
 import Logo from '../components/logo';
 import Keyboard from '../components/keyboard';
 import Guide from '../components/guide';
+import Daily from '../components/daily';
 
 import { transform, lastRecord, speeds, i18n, lan } from '../unit/const';
 import { visibilityChangeEvent, isFocus } from '../unit/';
@@ -97,6 +98,13 @@ class App extends React.Component {
                 reset={this.props.reset}
               />
               <Logo cur={!!this.props.cur} reset={this.props.reset} />
+              <Daily
+                cur={this.props.cur}
+                reset={this.props.reset}
+                dailyMode={this.props.dailyMode}
+                showRanking={this.props.dailyShowRanking}
+                points={this.props.points}
+              />
               <div className={style.state}>
                 <Point cur={!!this.props.cur} point={this.props.points} max={this.props.max} />
                 <p>{ this.props.cur ? i18n.cleans[lan] : i18n.startLine[lan] }</p>
@@ -140,6 +148,8 @@ App.propTypes = {
   reset: propTypes.bool.isRequired,
   drop: propTypes.bool.isRequired,
   keyboard: propTypes.object.isRequired,
+  dailyMode: propTypes.bool.isRequired,
+  dailyShowRanking: propTypes.bool.isRequired,
 };
 
 const mapStateToProps = (state) => ({
@@ -157,6 +167,8 @@ const mapStateToProps = (state) => ({
   reset: state.get('reset'),
   drop: state.get('drop'),
   keyboard: state.get('keyboard'),
+  dailyMode: state.get('daily').mode,
+  dailyShowRanking: state.get('daily').showRanking,
 });
 
 export default connect(mapStateToProps)(App);

@@ -4,6 +4,7 @@ import { want, isClear, isOver } from '../unit/';
 import actions from '../actions';
 import { speeds, blankLine, blankMatrix, clearPoints, eachLines } from '../unit/const';
 import { music } from '../unit/music';
+import { submitDailyScore, getDailyRankings } from '../unit/dailyChallenge';
 
 
 const getStartMatrix = (startLines) => { // 生成startLines
@@ -37,23 +38,43 @@ const getStartMatrix = (startLines) => { // 生成startLines
   return startMatrix;
 };
 
+const getDailyNextType = () => {
+  const state = store.getState();
+  const daily = state.get('daily');
+  const blockIndex = daily.blockIndex;
+  const blockSequence = daily.blockSequence;
+  store.dispatch(actions.dailyBlockIndex(blockIndex + 1));
+  return blockSequence[blockIndex] || blockSequence[0];
+};
+
 const states = {
-  // 自动下落setTimeout变量
   fallInterval: null,
 
-  // 游戏开始
   start: () => {
     if (music.start) {
       music.start();
     }
     const state = store.getState();
+    const isDaily = state.get('daily').mode;
     states.dispatchPoints(0);
     store.dispatch(actions.speedRun(state.get('speedStart')));
-    const startLines = state.get('startLines');
-    const startMatrix = getStartMatrix(startLines);
+
+    let startMatrix;
+    if (isDaily) {
+      const blockSequence = state.get('daily').blockSequence;
+      const obstacles = state.get('daily').obstacles;
+      store.dispatch(actions.dailyBlockIndex(2));
+      startMatrix = obstacles;
+      store.dispatch(actions.nextBlock(blockSequence[0]));
+      store.dispatch(actions.moveBlock({ type: blockSequence[0] }));
+      store.dispatch(actions.nextBlock(blockSequence[1]));
+    } else {
+      const startLines = state.get('startLines');
+      startMatrix = getStartMatrix(startLines);
+      store.dispatch(actions.moveBlock({ type: state.get('next') }));
+      store.dispatch(actions.nextBlock());
+    }
     store.dispatch(actions.matrix(startMatrix));
-    store.dispatch(actions.moveBlock({ type: state.get('next') }));
-    store.dispatch(actions.nextBlock());
     states.auto();
   },
 
@@ -100,7 +121,7 @@ const states = {
     }
 
     const addPoints = (store.getState().get('points') + 10) +
-      ((store.getState().get('speedRun') - 1) * 2); // 速度越快, 得分越高
+      ((store.getState().get('speedRun') - 1) * 2);
 
     states.dispatchPoints(addPoints);
 
@@ -117,10 +138,15 @@ const states = {
       states.overStart();
       return;
     }
+    const isDaily = store.getState().get('daily').mode;
     setTimeout(() => {
       store.dispatch(actions.lock(false));
       store.dispatch(actions.moveBlock({ type: store.getState().get('next') }));
-      store.dispatch(actions.nextBlock());
+      if (isDaily) {
+        store.dispatch(actions.nextBlock(getDailyNextType()));
+      } else {
+        store.dispatch(actions.nextBlock());
+      }
       states.auto();
     }, 100);
   },
@@ -151,6 +177,7 @@ const states = {
   // 消除行
   clearLines: (matrix, lines) => {
     const state = store.getState();
+    const isDaily = state.get('daily').mode;
     let newMatrix = matrix;
     lines.forEach(n => {
       newMatrix = newMatrix.splice(n, 1);
@@ -158,17 +185,21 @@ const states = {
     });
     store.dispatch(actions.matrix(newMatrix));
     store.dispatch(actions.moveBlock({ type: state.get('next') }));
-    store.dispatch(actions.nextBlock());
+    if (isDaily) {
+      store.dispatch(actions.nextBlock(getDailyNextType()));
+    } else {
+      store.dispatch(actions.nextBlock());
+    }
     states.auto();
     store.dispatch(actions.lock(false));
     const clearLines = state.get('clearLines') + lines.length;
-    store.dispatch(actions.clearLines(clearLines)); // 更新消除行
+    store.dispatch(actions.clearLines(clearLines));
 
     const addPoints = store.getState().get('points') +
-      clearPoints[lines.length - 1]; // 一次消除的行越多, 加分越多
+      clearPoints[lines.length - 1];
     states.dispatchPoints(addPoints);
 
-    const speedAdd = Math.floor(clearLines / eachLines); // 消除行数, 增加对应速度
+    const speedAdd = Math.floor(clearLines / eachLines);
     let speedNow = state.get('speedStart') + speedAdd;
     speedNow = speedNow > 6 ? 6 : speedNow;
     store.dispatch(actions.speedRun(speedNow));
@@ -184,17 +215,31 @@ const states = {
 
   // 游戏结束动画完成
   overEnd: () => {
+    const state = store.getState();
+    const isDaily = state.get('daily').mode;
     store.dispatch(actions.matrix(blankMatrix));
     store.dispatch(actions.moveBlock({ reset: true }));
     store.dispatch(actions.reset(false));
     store.dispatch(actions.lock(false));
     store.dispatch(actions.clearLines(0));
+
+    if (isDaily) {
+      const points = state.get('points');
+      const scoreSubmitted = state.get('daily').scoreSubmitted;
+      if (!scoreSubmitted && points > 0) {
+        submitDailyScore(points);
+        store.dispatch(actions.dailyScoreSubmitted(true));
+        const rankings = getDailyRankings();
+        store.dispatch(actions.dailyRankings(rankings));
+      }
+      store.dispatch(actions.dailyShowRanking(true));
+    }
   },
 
-  // 写入分数
-  dispatchPoints: (point) => { // 写入分数, 同时判断是否创造最高分
+  dispatchPoints: (point) => {
     store.dispatch(actions.points(point));
-    if (point > 0 && point > store.getState().get('max')) {
+    const isDaily = store.getState().get('daily').mode;
+    if (!isDaily && point > 0 && point > store.getState().get('max')) {
       store.dispatch(actions.max(point));
     }
   },

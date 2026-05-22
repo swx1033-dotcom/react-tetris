@@ -108,6 +108,41 @@ function focus(data) {
   };
 }
 
+function dailyMode(data) {
+  return {
+    type: reducerType.DAILY_MODE,
+    data,
+  };
+}
+
+function dailyBlockIndex(data) {
+  return {
+    type: reducerType.DAILY_BLOCK_INDEX,
+    data,
+  };
+}
+
+function dailyRankings(data) {
+  return {
+    type: reducerType.DAILY_RANKINGS,
+    data,
+  };
+}
+
+function dailyScoreSubmitted(data) {
+  return {
+    type: reducerType.DAILY_SCORE_SUBMITTED,
+    data,
+  };
+}
+
+function dailyShowRanking(data) {
+  return {
+    type: reducerType.DAILY_SHOW_RANKING,
+    data,
+  };
+}
+
 export default {
   nextBlock,
   moveBlock,
@@ -125,4 +160,9 @@ export default {
   keyboard,
   music,
   focus,
+  dailyMode,
+  dailyBlockIndex,
+  dailyRankings,
+  dailyScoreSubmitted,
+  dailyShowRanking,
 };

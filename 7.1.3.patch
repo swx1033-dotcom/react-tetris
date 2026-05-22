@@ -1,0 +1,343 @@
+diff --git a/i18n.json b/i18n.json
+index 5cb7e3b..635fdf3 100644
+--- a/i18n.json
++++ b/i18n.json
+@@ -121,6 +121,48 @@
+       "en": "Drop",
+       "fr": "Tomber",
+       "fa": "سقوط"
++    },
++    "dailyChallenge": {
++      "cn": "每日挑战",
++      "en": "Daily Challenge",
++      "fr": "Défi Quotidien",
++      "fa": "چالش روزانه"
++    },
++    "dailyYourScore": {
++      "cn": "你的得分",
++      "en": "Your Score",
++      "fr": "Votre Score",
++      "fa": "امتیاز شما"
++    },
++    "dailyHighest": {
++      "cn": "当日最高分",
++      "en": "Today's Highest",
++      "fr": "Record du Jour",
++      "fa": "بالاترین امروز"
++    },
++    "dailyYourRank": {
++      "cn": "你的排名",
++      "en": "Your Rank",
++      "fr": "Votre Rang",
++      "fa": "رتبه شما"
++    },
++    "dailyRanking": {
++      "cn": "排行榜 (前10名)",
++      "en": "Rankings (Top 10)",
++      "fr": "Classement (Top 10)",
++      "fa": "رتبه‌بندی (۱۰ نفر)"
++    },
++    "dailyClose": {
++      "cn": "关闭",
++      "en": "Close",
++      "fr": "Fermer",
++      "fa": "بستن"
++    },
++    "dailyNoRecords": {
++      "cn": "暂无排名记录",
++      "en": "No records yet",
++      "fr": "Aucun enregistrement",
++      "fa": "بدون رکورد"
+     }
+   }
+ }
+diff --git a/src/actions/index.js b/src/actions/index.js
+index 4490c4b..fc0ba41 100644
+--- a/src/actions/index.js
++++ b/src/actions/index.js
+@@ -108,6 +108,41 @@ function focus(data) {
+   };
+ }
+ 
++function dailyMode(data) {
++  return {
++    type: reducerType.DAILY_MODE,
++    data,
++  };
++}
++
++function dailyBlockIndex(data) {
++  return {
++    type: reducerType.DAILY_BLOCK_INDEX,
++    data,
++  };
++}
++
++function dailyRankings(data) {
++  return {
++    type: reducerType.DAILY_RANKINGS,
++    data,
++  };
++}
++
++function dailyScoreSubmitted(data) {
++  return {
++    type: reducerType.DAILY_SCORE_SUBMITTED,
++    data,
++  };
++}
++
++function dailyShowRanking(data) {
++  return {
++    type: reducerType.DAILY_SHOW_RANKING,
++    data,
++  };
++}
++
+ export default {
+   nextBlock,
+   moveBlock,
+@@ -125,4 +160,9 @@ export default {
+   keyboard,
+   music,
+   focus,
++  dailyMode,
++  dailyBlockIndex,
++  dailyRankings,
++  dailyScoreSubmitted,
++  dailyShowRanking,
+ };
+diff --git a/src/containers/index.js b/src/containers/index.js
+index 6b0b735..3c9addc 100644
+--- a/src/containers/index.js
++++ b/src/containers/index.js
+@@ -15,6 +15,7 @@ import Point from '../components/point';
+ import Logo from '../components/logo';
+ import Keyboard from '../components/keyboard';
+ import Guide from '../components/guide';
++import Daily from '../components/daily';
+ 
+ import { transform, lastRecord, speeds, i18n, lan } from '../unit/const';
+ import { visibilityChangeEvent, isFocus } from '../unit/';
+@@ -97,6 +98,13 @@ class App extends React.Component {
+                 reset={this.props.reset}
+               />
+               <Logo cur={!!this.props.cur} reset={this.props.reset} />
++              <Daily
++                cur={this.props.cur}
++                reset={this.props.reset}
++                dailyMode={this.props.dailyMode}
++                showRanking={this.props.dailyShowRanking}
++                points={this.props.points}
++              />
+               <div className={style.state}>
+                 <Point cur={!!this.props.cur} point={this.props.points} max={this.props.max} />
+                 <p>{ this.props.cur ? i18n.cleans[lan] : i18n.startLine[lan] }</p>
+@@ -140,6 +148,8 @@ App.propTypes = {
+   reset: propTypes.bool.isRequired,
+   drop: propTypes.bool.isRequired,
+   keyboard: propTypes.object.isRequired,
++  dailyMode: propTypes.bool.isRequired,
++  dailyShowRanking: propTypes.bool.isRequired,
+ };
+ 
+ const mapStateToProps = (state) => ({
+@@ -157,6 +167,8 @@ const mapStateToProps = (state) => ({
+   reset: state.get('reset'),
+   drop: state.get('drop'),
+   keyboard: state.get('keyboard'),
++  dailyMode: state.get('daily').mode,
++  dailyShowRanking: state.get('daily').showRanking,
+ });
+ 
+ export default connect(mapStateToProps)(App);
+diff --git a/src/control/states.js b/src/control/states.js
+index 4787b2f..8669944 100644
+--- a/src/control/states.js
++++ b/src/control/states.js
+@@ -4,6 +4,7 @@ import { want, isClear, isOver } from '../unit/';
+ import actions from '../actions';
+ import { speeds, blankLine, blankMatrix, clearPoints, eachLines } from '../unit/const';
+ import { music } from '../unit/music';
++import { submitDailyScore, getDailyRankings } from '../unit/dailyChallenge';
+ 
+ 
+ const getStartMatrix = (startLines) => { // 生成startLines
+@@ -37,23 +38,43 @@ const getStartMatrix = (startLines) => { // 生成startLines
+   return startMatrix;
+ };
+ 
++const getDailyNextType = () => {
++  const state = store.getState();
++  const daily = state.get('daily');
++  const blockIndex = daily.blockIndex;
++  const blockSequence = daily.blockSequence;
++  store.dispatch(actions.dailyBlockIndex(blockIndex + 1));
++  return blockSequence[blockIndex] || blockSequence[0];
++};
++
+ const states = {
+-  // 自动下落setTimeout变量
+   fallInterval: null,
+ 
+-  // 游戏开始
+   start: () => {
+     if (music.start) {
+       music.start();
+     }
+     const state = store.getState();
++    const isDaily = state.get('daily').mode;
+     states.dispatchPoints(0);
+     store.dispatch(actions.speedRun(state.get('speedStart')));
+-    const startLines = state.get('startLines');
+-    const startMatrix = getStartMatrix(startLines);
++
++    let startMatrix;
++    if (isDaily) {
++      const blockSequence = state.get('daily').blockSequence;
++      const obstacles = state.get('daily').obstacles;
++      store.dispatch(actions.dailyBlockIndex(2));
++      startMatrix = obstacles;
++      store.dispatch(actions.nextBlock(blockSequence[0]));
++      store.dispatch(actions.moveBlock({ type: blockSequence[0] }));
++      store.dispatch(actions.nextBlock(blockSequence[1]));
++    } else {
++      const startLines = state.get('startLines');
++      startMatrix = getStartMatrix(startLines);
++      store.dispatch(actions.moveBlock({ type: state.get('next') }));
++      store.dispatch(actions.nextBlock());
++    }
+     store.dispatch(actions.matrix(startMatrix));
+-    store.dispatch(actions.moveBlock({ type: state.get('next') }));
+-    store.dispatch(actions.nextBlock());
+     states.auto();
+   },
+ 
+@@ -100,7 +121,7 @@ const states = {
+     }
+ 
+     const addPoints = (store.getState().get('points') + 10) +
+-      ((store.getState().get('speedRun') - 1) * 2); // 速度越快, 得分越高
++      ((store.getState().get('speedRun') - 1) * 2);
+ 
+     states.dispatchPoints(addPoints);
+ 
+@@ -117,10 +138,15 @@ const states = {
+       states.overStart();
+       return;
+     }
++    const isDaily = store.getState().get('daily').mode;
+     setTimeout(() => {
+       store.dispatch(actions.lock(false));
+       store.dispatch(actions.moveBlock({ type: store.getState().get('next') }));
+-      store.dispatch(actions.nextBlock());
++      if (isDaily) {
++        store.dispatch(actions.nextBlock(getDailyNextType()));
++      } else {
++        store.dispatch(actions.nextBlock());
++      }
+       states.auto();
+     }, 100);
+   },
+@@ -151,6 +177,7 @@ const states = {
+   // 消除行
+   clearLines: (matrix, lines) => {
+     const state = store.getState();
++    const isDaily = state.get('daily').mode;
+     let newMatrix = matrix;
+     lines.forEach(n => {
+       newMatrix = newMatrix.splice(n, 1);
+@@ -158,17 +185,21 @@ const states = {
+     });
+     store.dispatch(actions.matrix(newMatrix));
+     store.dispatch(actions.moveBlock({ type: state.get('next') }));
+-    store.dispatch(actions.nextBlock());
++    if (isDaily) {
++      store.dispatch(actions.nextBlock(getDailyNextType()));
++    } else {
++      store.dispatch(actions.nextBlock());
++    }
+     states.auto();
+     store.dispatch(actions.lock(false));
+     const clearLines = state.get('clearLines') + lines.length;
+-    store.dispatch(actions.clearLines(clearLines)); // 更新消除行
++    store.dispatch(actions.clearLines(clearLines));
+ 
+     const addPoints = store.getState().get('points') +
+-      clearPoints[lines.length - 1]; // 一次消除的行越多, 加分越多
++      clearPoints[lines.length - 1];
+     states.dispatchPoints(addPoints);
+ 
+-    const speedAdd = Math.floor(clearLines / eachLines); // 消除行数, 增加对应速度
++    const speedAdd = Math.floor(clearLines / eachLines);
+     let speedNow = state.get('speedStart') + speedAdd;
+     speedNow = speedNow > 6 ? 6 : speedNow;
+     store.dispatch(actions.speedRun(speedNow));
+@@ -184,17 +215,31 @@ const states = {
+ 
+   // 游戏结束动画完成
+   overEnd: () => {
++    const state = store.getState();
++    const isDaily = state.get('daily').mode;
+     store.dispatch(actions.matrix(blankMatrix));
+     store.dispatch(actions.moveBlock({ reset: true }));
+     store.dispatch(actions.reset(false));
+     store.dispatch(actions.lock(false));
+     store.dispatch(actions.clearLines(0));
++
++    if (isDaily) {
++      const points = state.get('points');
++      const scoreSubmitted = state.get('daily').scoreSubmitted;
++      if (!scoreSubmitted && points > 0) {
++        submitDailyScore(points);
++        store.dispatch(actions.dailyScoreSubmitted(true));
++        const rankings = getDailyRankings();
++        store.dispatch(actions.dailyRankings(rankings));
++      }
++      store.dispatch(actions.dailyShowRanking(true));
++    }
+   },
+ 
+-  // 写入分数
+-  dispatchPoints: (point) => { // 写入分数, 同时判断是否创造最高分
++  dispatchPoints: (point) => {
+     store.dispatch(actions.points(point));
+-    if (point > 0 && point > store.getState().get('max')) {
++    const isDaily = store.getState().get('daily').mode;
++    if (!isDaily && point > 0 && point > store.getState().get('max')) {
+       store.dispatch(actions.max(point));
+     }
+   },
+diff --git a/src/reducers/index.js b/src/reducers/index.js
+index 2407ecc..d35f46d 100644
+--- a/src/reducers/index.js
++++ b/src/reducers/index.js
+@@ -15,6 +15,7 @@ import reset from './reset';
+ import drop from './drop';
+ import keyboard from './keyboard';
+ import focus from './focus';
++import daily from './daily';
+ 
+ 
+ const rootReducer = combineReducers({
+@@ -34,6 +35,7 @@ const rootReducer = combineReducers({
+   drop,
+   keyboard,
+   focus,
++  daily,
+ });
+ 
+ export default rootReducer;
+diff --git a/src/unit/reducerType.js b/src/unit/reducerType.js
+index 28b0991..e52f1aa 100644
+--- a/src/unit/reducerType.js
++++ b/src/unit/reducerType.js
+@@ -21,3 +21,8 @@ export const KEY_RESET = 'KEY_RESET';
+ export const KEY_MUSIC = 'KEY_MUSIC';
+ export const KEY_PAUSE = 'KEY_PAUSE';
+ export const FOCUS = 'FOCUS';
++export const DAILY_MODE = 'DAILY_MODE';
++export const DAILY_BLOCK_INDEX = 'DAILY_BLOCK_INDEX';
++export const DAILY_RANKINGS = 'DAILY_RANKINGS';
++export const DAILY_SCORE_SUBMITTED = 'DAILY_SCORE_SUBMITTED';
++export const DAILY_SHOW_RANKING = 'DAILY_SHOW_RANKING';
