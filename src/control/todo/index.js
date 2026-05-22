@@ -6,6 +6,7 @@ import space from './space';
 import s from './s';
 import r from './r';
 import p from './p';
+import c from './c';
 
 export default {
   left,
@@ -16,4 +17,5 @@ export default {
   r,
   p,
   s,
+  c,
 };

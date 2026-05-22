@@ -121,6 +121,12 @@
       "en": "Drop",
       "fr": "Tomber",
       "fa": "سقوط"
+    },
+    "challenge": {
+      "cn": "挑战",
+      "en": "Daily",
+      "fr": "Défi",
+      "fa": "چالش"
     }
   }
 }

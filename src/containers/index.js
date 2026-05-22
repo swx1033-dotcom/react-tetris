@@ -96,9 +96,9 @@ class App extends React.Component {
                 cur={this.props.cur}
                 reset={this.props.reset}
               />
-              <Logo cur={!!this.props.cur} reset={this.props.reset} />
+              <Logo cur={!!this.props.cur} reset={this.props.reset} challengeMode={this.props.challengeMode} points={this.props.points} />
               <div className={style.state}>
-                <Point cur={!!this.props.cur} point={this.props.points} max={this.props.max} />
+                <Point cur={!!this.props.cur} point={this.props.points} max={this.props.max} challengeMode={this.props.challengeMode} />
                 <p>{ this.props.cur ? i18n.cleans[lan] : i18n.startLine[lan] }</p>
                 <Number number={this.props.cur ? this.props.clearLines : this.props.startLines} />
                 <p>{i18n.level[lan]}</p>
@@ -140,6 +140,7 @@ App.propTypes = {
   reset: propTypes.bool.isRequired,
   drop: propTypes.bool.isRequired,
   keyboard: propTypes.object.isRequired,
+  challengeMode: propTypes.bool,
 };
 
 const mapStateToProps = (state) => ({
@@ -157,6 +158,7 @@ const mapStateToProps = (state) => ({
   reset: state.get('reset'),
   drop: state.get('drop'),
   keyboard: state.get('keyboard'),
+  challengeMode: state.get('challengeMode'),
 });
 
 export default connect(mapStateToProps)(App);

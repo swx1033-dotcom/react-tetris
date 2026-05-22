@@ -26,9 +26,25 @@ const isFocus = () => {
 };
 
 const unit = {
-  getNextType() { // 随机获取下一个方块类型
+  getNextType(isChallenge = false) { // 随机获取下一个方块类型
     const len = blockType.length;
-    return blockType[Math.floor(Math.random() * len)];
+    let rand = Math.random();
+    if (isChallenge) {
+      // 每日挑战模式下使用基于日期的PRNG
+      const d = new Date();
+      if (!unit.seed || unit.seedDate !== `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`) {
+        unit.seed = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        unit.seedDate = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      }
+      unit.seed = (unit.seed * 9301 + 49297) % 233280;
+      rand = unit.seed / 233280;
+    }
+    return blockType[Math.floor(rand * len)];
+  },
+  resetChallengeSeed() {
+    const d = new Date();
+    unit.seed = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    unit.seedDate = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
   },
   want(next, matrix) { // 方块是否能移到到指定位置
     const xy = next.xy;
@@ -95,6 +111,25 @@ const unit = {
     const ipad = ua.indexOf('iPad') > -1;
     const nokiaN = ua.indexOf('NokiaN') > -1;
     return android || iphone || ipod || ipad || nokiaN;
+  },
+  getDailyScores() {
+    const d = new Date();
+    const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const key = `tetris_daily_${dateKey}`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  },
+  saveDailyScore(score) {
+    if (score <= 0) return;
+    const scores = unit.getDailyScores();
+    scores.push(score);
+    scores.sort((a, b) => b - a);
+    const top10 = scores.slice(0, 10);
+    const d = new Date();
+    const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const key = `tetris_daily_${dateKey}`;
+    localStorage.setItem(key, JSON.stringify(top10));
+    return top10;
   },
   visibilityChangeEvent,
   isFocus,

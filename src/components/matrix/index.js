@@ -7,6 +7,7 @@ import style from './index.less';
 import { isClear } from '../../unit/';
 import { fillLine, blankLine } from '../../unit/const';
 import states from '../../control/states';
+import store from '../../store';
 
 const t = setTimeout;
 

@@ -1,20 +1,38 @@
 import { List } from 'immutable';
 import store from '../store';
-import { want, isClear, isOver } from '../unit/';
+import { want, isClear, isOver, getNextType, resetChallengeSeed } from '../unit/';
 import actions from '../actions';
 import { speeds, blankLine, blankMatrix, clearPoints, eachLines } from '../unit/const';
 import { music } from '../unit/music';
 
-
-const getStartMatrix = (startLines) => { // 生成startLines
+const getStartMatrix = (startLines, isChallenge) => { // 生成startLines
   const getLine = (min, max) => { // 返回标亮个数在min~max之间一行方块, (包含边界)
-    const count = parseInt((((max - min) + 1) * Math.random()) + min, 10);
+    let rand1, rand2;
+    if (isChallenge) {
+      // 挑战模式下的固定随机数
+      let seed = store.getState().get('challengeMode') ? window.__challengeSeed : Math.random();
+      if (!seed) seed = Math.random();
+      
+      const nextRand = () => {
+        seed = (seed * 9301 + 49297) % 233280;
+        window.__challengeSeed = seed;
+        return seed / 233280;
+      };
+      rand1 = nextRand();
+      rand2 = nextRand();
+    } else {
+      rand1 = Math.random();
+      rand2 = Math.random();
+    }
+
+    const count = parseInt((((max - min) + 1) * rand1) + min, 10);
     const line = [];
     for (let i = 0; i < count; i++) { // 插入高亮
       line.push(1);
     }
     for (let i = 0, len = 10 - count; i < len; i++) { // 在随机位置插入灰色
-      const index = parseInt(((line.length + 1) * Math.random()), 10);
+      let rand3 = isChallenge ? (window.__challengeSeed = (window.__challengeSeed * 9301 + 49297) % 233280) / 233280 : Math.random();
+      const index = parseInt(((line.length + 1) * rand3), 10);
       line.splice(index, 0, 0);
     }
 
@@ -22,7 +40,10 @@ const getStartMatrix = (startLines) => { // 生成startLines
   };
   let startMatrix = List([]);
 
-  for (let i = 0; i < startLines; i++) {
+  // 挑战模式下预设一些固定障碍物
+  let linesToGenerate = isChallenge ? Math.max(startLines, 5) : startLines;
+
+  for (let i = 0; i < linesToGenerate; i++) {
     if (i <= 2) { // 0-3
       startMatrix = startMatrix.push(getLine(5, 8));
     } else if (i <= 6) { // 4-6
@@ -31,7 +52,7 @@ const getStartMatrix = (startLines) => { // 生成startLines
       startMatrix = startMatrix.push(getLine(3, 9));
     }
   }
-  for (let i = 0, len = 20 - startLines; i < len; i++) { // 插入上部分的灰色
+  for (let i = 0, len = 20 - linesToGenerate; i < len; i++) { // 插入上部分的灰色
     startMatrix = startMatrix.unshift(List(blankLine));
   }
   return startMatrix;
@@ -47,12 +68,23 @@ const states = {
       music.start();
     }
     const state = store.getState();
+    const isChallenge = state.get('challengeMode');
+
+    if (isChallenge) {
+      resetChallengeSeed();
+      const d = new Date();
+      window.__challengeSeed = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      const firstBlock = getNextType(true);
+      store.dispatch(actions.moveBlock({ type: firstBlock }));
+    } else {
+      store.dispatch(actions.moveBlock({ type: state.get('next') }));
+    }
+
     states.dispatchPoints(0);
     store.dispatch(actions.speedRun(state.get('speedStart')));
     const startLines = state.get('startLines');
-    const startMatrix = getStartMatrix(startLines);
+    const startMatrix = getStartMatrix(startLines, isChallenge);
     store.dispatch(actions.matrix(startMatrix));
-    store.dispatch(actions.moveBlock({ type: state.get('next') }));
     store.dispatch(actions.nextBlock());
     states.auto();
   },
@@ -180,6 +212,15 @@ const states = {
     store.dispatch(actions.lock(true));
     store.dispatch(actions.reset(true));
     store.dispatch(actions.pause(false));
+
+    const state = store.getState();
+    if (state.get('challengeMode')) {
+      const point = state.get('points');
+      if (point > 0) {
+        const unit = require('../unit/');
+        unit.saveDailyScore(point);
+      }
+    }
   },
 
   // 游戏结束动画完成
@@ -194,7 +235,9 @@ const states = {
   // 写入分数
   dispatchPoints: (point) => { // 写入分数, 同时判断是否创造最高分
     store.dispatch(actions.points(point));
-    if (point > 0 && point > store.getState().get('max')) {
+    const state = store.getState();
+    const isChallenge = state.get('challengeMode');
+    if (!isChallenge && point > 0 && point > state.get('max')) {
       store.dispatch(actions.max(point));
     }
   },

@@ -1,0 +1,518 @@
+diff --git a/i18n.json b/i18n.json
+index 5cb7e3b..2d2835a 100644
+--- a/i18n.json
++++ b/i18n.json
+@@ -121,6 +121,12 @@
+       "en": "Drop",
+       "fr": "Tomber",
+       "fa": "سقوط"
++    },
++    "challenge": {
++      "cn": "挑战",
++      "en": "Daily",
++      "fr": "Défi",
++      "fa": "چالش"
+     }
+   }
+ }
+diff --git a/src/actions/index.js b/src/actions/index.js
+index 4490c4b..b5b2300 100644
+--- a/src/actions/index.js
++++ b/src/actions/index.js
+@@ -3,7 +3,13 @@ import * as reducerType from '../unit/reducerType';
+ import Block from '../unit/block';
+ import keyboard from './keyboard';
+ 
+-function nextBlock(next = getNextType()) {
++import store from '../store';
++
++function nextBlock(next) {
++  if (!next) {
++    const isChallenge = store.getState().get('challengeMode');
++    next = getNextType(isChallenge);
++  }
+   return {
+     type: reducerType.NEXT_BLOCK,
+     data: next,
+@@ -108,6 +114,13 @@ function focus(data) {
+   };
+ }
+ 
++function challengeMode(data) {
++  return {
++    type: reducerType.CHALLENGE_MODE,
++    data,
++  };
++}
++
+ export default {
+   nextBlock,
+   moveBlock,
+@@ -125,4 +138,5 @@ export default {
+   keyboard,
+   music,
+   focus,
++  challengeMode,
+ };
+diff --git a/src/actions/keyboard.js b/src/actions/keyboard.js
+index 22f50c9..9fcc187 100644
+--- a/src/actions/keyboard.js
++++ b/src/actions/keyboard.js
+@@ -56,6 +56,13 @@ function pause(data) {
+   };
+ }
+ 
++function challenge(data) {
++  return {
++    type: reducerType.KEY_CHALLENGE,
++    data,
++  };
++}
++
+ export default {
+   drop,
+   down,
+@@ -65,4 +72,5 @@ export default {
+   reset,
+   music,
+   pause,
++  challenge,
+ };
+diff --git a/src/components/keyboard/index.js b/src/components/keyboard/index.js
+index fd60877..b400f11 100644
+--- a/src/components/keyboard/index.js
++++ b/src/components/keyboard/index.js
+@@ -159,6 +159,15 @@ export default class Keyboard extends React.Component {
+           active={keyboard.get('pause')}
+           ref={(c) => { this.dom_p = c; }}
+         />
++        <Button
++          color="green"
++          size="s2"
++          top={0}
++          left={286}
++          label={`${i18n.challenge[lan]}(C)`}
++          active={keyboard.get('challenge')}
++          ref={(c) => { this.dom_c = c; }}
++        />
+       </div>
+     );
+   }
+diff --git a/src/components/logo/index.js b/src/components/logo/index.js
+index 76f4db1..af4cfff 100644
+--- a/src/components/logo/index.js
++++ b/src/components/logo/index.js
+@@ -134,6 +134,35 @@ export default class Logo extends React.Component {
+     if (this.props.cur) {
+       return null;
+     }
++    if (this.props.challengeMode) {
++      const unit = require('../../unit/');
++      const scores = unit.getDailyScores();
++      let rank = -1;
++      const currentPoint = this.props.points;
++      if (currentPoint > 0) {
++        for (let i = 0; i < scores.length; i++) {
++          if (currentPoint === scores[i]) {
++            rank = i + 1;
++            break;
++          }
++        }
++      }
++      return (
++        <div className={style.logo} style={{ display: this.state.display }}>
++          <h2 style={{ fontSize: '18px', margin: '5px 0' }}>{i18n.challenge[lan]} Rank</h2>
++          {rank !== -1 && <p style={{ fontSize: '14px', margin: '5px 0', color: 'red' }}>Your Rank: {rank}</p>}
++          {scores.length === 0 ? (
++            <p>No records today</p>
++          ) : (
++            <div style={{ fontSize: '14px', lineHeight: '1.5', marginTop: '5px' }}>
++              {scores.slice(0, 5).map((s, i) => (
++                <div key={i}>{i + 1}. {s}</div>
++              ))}
++            </div>
++          )}
++        </div>
++      );
++    }
+     return (
+       <div className={style.logo} style={{ display: this.state.display }}>
+         <div className={cn({ bg: true, [style.dragon]: true, [this.state.style]: true })} />
+@@ -146,6 +175,8 @@ export default class Logo extends React.Component {
+ Logo.propTypes = {
+   cur: propTypes.bool,
+   reset: propTypes.bool.isRequired,
++  challengeMode: propTypes.bool,
++  points: propTypes.number,
+ };
+ Logo.statics = {
+   timeout: null,
+diff --git a/src/components/matrix/index.js b/src/components/matrix/index.js
+index c4b1d2d..ca1274f 100644
+--- a/src/components/matrix/index.js
++++ b/src/components/matrix/index.js
+@@ -7,6 +7,7 @@ import style from './index.less';
+ import { isClear } from '../../unit/';
+ import { fillLine, blankLine } from '../../unit/const';
+ import states from '../../control/states';
++import store from '../../store';
+ 
+ const t = setTimeout;
+ 
+diff --git a/src/components/point/index.js b/src/components/point/index.js
+index fae8e60..17a1bbf 100644
+--- a/src/components/point/index.js
++++ b/src/components/point/index.js
+@@ -22,15 +22,25 @@ export default class Point extends React.Component {
+   componentWillReceiveProps(nextProps) {
+     this.onChange(nextProps);
+   }
+-  shouldComponentUpdate({ cur, point, max }) {
++  shouldComponentUpdate({ cur, point, max, challengeMode }) {
+     const props = this.props;
+-    return cur !== props.cur || point !== props.point || max !== props.max || !props.cur;
++    return cur !== props.cur || point !== props.point || max !== props.max || challengeMode !== props.challengeMode || !props.cur;
+   }
+-  onChange({ cur, point, max }) {
++  onChange({ cur, point, max, challengeMode }) {
+     clearInterval(Point.timeout);
++    let displayMax = max;
++    let labelMax = ZDF;
++
++    if (challengeMode) {
++      const unit = require('../../unit/');
++      const dailyScores = unit.getDailyScores();
++      displayMax = dailyScores.length > 0 ? dailyScores[0] : 0;
++      labelMax = i18n.challenge[lan];
++    }
++
+     if (cur) { // 在游戏进行中
+       this.setState({
+-        label: point >= max ? ZDF : DF,
++        label: point >= displayMax ? labelMax : DF,
+         number: point,
+       });
+     } else { // 游戏未开始
+@@ -41,8 +51,8 @@ export default class Point extends React.Component {
+         });
+         Point.timeout = setTimeout(() => {
+           this.setState({
+-            label: ZDF,
+-            number: max,
++            label: labelMax,
++            number: displayMax,
+           });
+           Point.timeout = setTimeout(toggle, 3000);
+         }, 3000);
+@@ -52,8 +62,8 @@ export default class Point extends React.Component {
+         toggle();
+       } else {
+         this.setState({
+-          label: ZDF,
+-          number: max,
++          label: labelMax,
++          number: displayMax,
+         });
+       }
+     }
+@@ -76,5 +86,6 @@ Point.propTypes = {
+   cur: propTypes.bool,
+   max: propTypes.number.isRequired,
+   point: propTypes.number.isRequired,
++  challengeMode: propTypes.bool,
+ };
+ 
+diff --git a/src/containers/index.js b/src/containers/index.js
+index 6b0b735..ca484d5 100644
+--- a/src/containers/index.js
++++ b/src/containers/index.js
+@@ -96,9 +96,9 @@ class App extends React.Component {
+                 cur={this.props.cur}
+                 reset={this.props.reset}
+               />
+-              <Logo cur={!!this.props.cur} reset={this.props.reset} />
++              <Logo cur={!!this.props.cur} reset={this.props.reset} challengeMode={this.props.challengeMode} points={this.props.points} />
+               <div className={style.state}>
+-                <Point cur={!!this.props.cur} point={this.props.points} max={this.props.max} />
++                <Point cur={!!this.props.cur} point={this.props.points} max={this.props.max} challengeMode={this.props.challengeMode} />
+                 <p>{ this.props.cur ? i18n.cleans[lan] : i18n.startLine[lan] }</p>
+                 <Number number={this.props.cur ? this.props.clearLines : this.props.startLines} />
+                 <p>{i18n.level[lan]}</p>
+@@ -140,6 +140,7 @@ App.propTypes = {
+   reset: propTypes.bool.isRequired,
+   drop: propTypes.bool.isRequired,
+   keyboard: propTypes.object.isRequired,
++  challengeMode: propTypes.bool,
+ };
+ 
+ const mapStateToProps = (state) => ({
+@@ -157,6 +158,7 @@ const mapStateToProps = (state) => ({
+   reset: state.get('reset'),
+   drop: state.get('drop'),
+   keyboard: state.get('keyboard'),
++  challengeMode: state.get('challengeMode'),
+ });
+ 
+ export default connect(mapStateToProps)(App);
+diff --git a/src/control/index.js b/src/control/index.js
+index 25d1c45..66f03c3 100644
+--- a/src/control/index.js
++++ b/src/control/index.js
+@@ -10,6 +10,7 @@ const keyboard = {
+   83: 's',
+   82: 'r',
+   80: 'p',
++  67: 'c',
+ };
+ 
+ let keydownActive;
+diff --git a/src/control/states.js b/src/control/states.js
+index 4787b2f..2620f7d 100644
+--- a/src/control/states.js
++++ b/src/control/states.js
+@@ -1,20 +1,38 @@
+ import { List } from 'immutable';
+ import store from '../store';
+-import { want, isClear, isOver } from '../unit/';
++import { want, isClear, isOver, getNextType, resetChallengeSeed } from '../unit/';
+ import actions from '../actions';
+ import { speeds, blankLine, blankMatrix, clearPoints, eachLines } from '../unit/const';
+ import { music } from '../unit/music';
+ 
+-
+-const getStartMatrix = (startLines) => { // 生成startLines
++const getStartMatrix = (startLines, isChallenge) => { // 生成startLines
+   const getLine = (min, max) => { // 返回标亮个数在min~max之间一行方块, (包含边界)
+-    const count = parseInt((((max - min) + 1) * Math.random()) + min, 10);
++    let rand1, rand2;
++    if (isChallenge) {
++      // 挑战模式下的固定随机数
++      let seed = store.getState().get('challengeMode') ? window.__challengeSeed : Math.random();
++      if (!seed) seed = Math.random();
++      
++      const nextRand = () => {
++        seed = (seed * 9301 + 49297) % 233280;
++        window.__challengeSeed = seed;
++        return seed / 233280;
++      };
++      rand1 = nextRand();
++      rand2 = nextRand();
++    } else {
++      rand1 = Math.random();
++      rand2 = Math.random();
++    }
++
++    const count = parseInt((((max - min) + 1) * rand1) + min, 10);
+     const line = [];
+     for (let i = 0; i < count; i++) { // 插入高亮
+       line.push(1);
+     }
+     for (let i = 0, len = 10 - count; i < len; i++) { // 在随机位置插入灰色
+-      const index = parseInt(((line.length + 1) * Math.random()), 10);
++      let rand3 = isChallenge ? (window.__challengeSeed = (window.__challengeSeed * 9301 + 49297) % 233280) / 233280 : Math.random();
++      const index = parseInt(((line.length + 1) * rand3), 10);
+       line.splice(index, 0, 0);
+     }
+ 
+@@ -22,7 +40,10 @@ const getStartMatrix = (startLines) => { // 生成startLines
+   };
+   let startMatrix = List([]);
+ 
+-  for (let i = 0; i < startLines; i++) {
++  // 挑战模式下预设一些固定障碍物
++  let linesToGenerate = isChallenge ? Math.max(startLines, 5) : startLines;
++
++  for (let i = 0; i < linesToGenerate; i++) {
+     if (i <= 2) { // 0-3
+       startMatrix = startMatrix.push(getLine(5, 8));
+     } else if (i <= 6) { // 4-6
+@@ -31,7 +52,7 @@ const getStartMatrix = (startLines) => { // 生成startLines
+       startMatrix = startMatrix.push(getLine(3, 9));
+     }
+   }
+-  for (let i = 0, len = 20 - startLines; i < len; i++) { // 插入上部分的灰色
++  for (let i = 0, len = 20 - linesToGenerate; i < len; i++) { // 插入上部分的灰色
+     startMatrix = startMatrix.unshift(List(blankLine));
+   }
+   return startMatrix;
+@@ -47,12 +68,23 @@ const states = {
+       music.start();
+     }
+     const state = store.getState();
++    const isChallenge = state.get('challengeMode');
++
++    if (isChallenge) {
++      resetChallengeSeed();
++      const d = new Date();
++      window.__challengeSeed = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
++      const firstBlock = getNextType(true);
++      store.dispatch(actions.moveBlock({ type: firstBlock }));
++    } else {
++      store.dispatch(actions.moveBlock({ type: state.get('next') }));
++    }
++
+     states.dispatchPoints(0);
+     store.dispatch(actions.speedRun(state.get('speedStart')));
+     const startLines = state.get('startLines');
+-    const startMatrix = getStartMatrix(startLines);
++    const startMatrix = getStartMatrix(startLines, isChallenge);
+     store.dispatch(actions.matrix(startMatrix));
+-    store.dispatch(actions.moveBlock({ type: state.get('next') }));
+     store.dispatch(actions.nextBlock());
+     states.auto();
+   },
+@@ -180,6 +212,15 @@ const states = {
+     store.dispatch(actions.lock(true));
+     store.dispatch(actions.reset(true));
+     store.dispatch(actions.pause(false));
++
++    const state = store.getState();
++    if (state.get('challengeMode')) {
++      const point = state.get('points');
++      if (point > 0) {
++        const unit = require('../unit/');
++        unit.saveDailyScore(point);
++      }
++    }
+   },
+ 
+   // 游戏结束动画完成
+@@ -194,7 +235,9 @@ const states = {
+   // 写入分数
+   dispatchPoints: (point) => { // 写入分数, 同时判断是否创造最高分
+     store.dispatch(actions.points(point));
+-    if (point > 0 && point > store.getState().get('max')) {
++    const state = store.getState();
++    const isChallenge = state.get('challengeMode');
++    if (!isChallenge && point > 0 && point > state.get('max')) {
+       store.dispatch(actions.max(point));
+     }
+   },
+diff --git a/src/control/todo/index.js b/src/control/todo/index.js
+index ed3995c..f5a368c 100644
+--- a/src/control/todo/index.js
++++ b/src/control/todo/index.js
+@@ -6,6 +6,7 @@ import space from './space';
+ import s from './s';
+ import r from './r';
+ import p from './p';
++import c from './c';
+ 
+ export default {
+   left,
+@@ -16,4 +17,5 @@ export default {
+   r,
+   p,
+   s,
++  c,
+ };
+diff --git a/src/reducers/index.js b/src/reducers/index.js
+index 2407ecc..3c4665c 100644
+--- a/src/reducers/index.js
++++ b/src/reducers/index.js
+@@ -15,7 +15,7 @@ import reset from './reset';
+ import drop from './drop';
+ import keyboard from './keyboard';
+ import focus from './focus';
+-
++import challengeMode from './challengeMode';
+ 
+ const rootReducer = combineReducers({
+   pause,
+@@ -34,6 +34,7 @@ const rootReducer = combineReducers({
+   drop,
+   keyboard,
+   focus,
++  challengeMode,
+ });
+ 
+ export default rootReducer;
+diff --git a/src/reducers/keyboard/index.js b/src/reducers/keyboard/index.js
+index ebda762..f4fb008 100644
+--- a/src/reducers/keyboard/index.js
++++ b/src/reducers/keyboard/index.js
+@@ -7,6 +7,7 @@ import rotate from './rotate';
+ import reset from './reset';
+ import music from './music';
+ import pause from './pause';
++import challenge from './challenge';
+ 
+ const keyboardReducer = combineReducers({
+   drop,
+@@ -17,6 +18,7 @@ const keyboardReducer = combineReducers({
+   reset,
+   music,
+   pause,
++  challenge,
+ });
+ 
+ export default keyboardReducer;
+diff --git a/src/unit/index.js b/src/unit/index.js
+index e954b23..9bd179d 100644
+--- a/src/unit/index.js
++++ b/src/unit/index.js
+@@ -26,9 +26,25 @@ const isFocus = () => {
+ };
+ 
+ const unit = {
+-  getNextType() { // 随机获取下一个方块类型
++  getNextType(isChallenge = false) { // 随机获取下一个方块类型
+     const len = blockType.length;
+-    return blockType[Math.floor(Math.random() * len)];
++    let rand = Math.random();
++    if (isChallenge) {
++      // 每日挑战模式下使用基于日期的PRNG
++      const d = new Date();
++      if (!unit.seed || unit.seedDate !== `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`) {
++        unit.seed = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
++        unit.seedDate = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
++      }
++      unit.seed = (unit.seed * 9301 + 49297) % 233280;
++      rand = unit.seed / 233280;
++    }
++    return blockType[Math.floor(rand * len)];
++  },
++  resetChallengeSeed() {
++    const d = new Date();
++    unit.seed = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
++    unit.seedDate = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+   },
+   want(next, matrix) { // 方块是否能移到到指定位置
+     const xy = next.xy;
+@@ -96,6 +112,25 @@ const unit = {
+     const nokiaN = ua.indexOf('NokiaN') > -1;
+     return android || iphone || ipod || ipad || nokiaN;
+   },
++  getDailyScores() {
++    const d = new Date();
++    const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
++    const key = `tetris_daily_${dateKey}`;
++    const data = localStorage.getItem(key);
++    return data ? JSON.parse(data) : [];
++  },
++  saveDailyScore(score) {
++    if (score <= 0) return;
++    const scores = unit.getDailyScores();
++    scores.push(score);
++    scores.sort((a, b) => b - a);
++    const top10 = scores.slice(0, 10);
++    const d = new Date();
++    const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
++    const key = `tetris_daily_${dateKey}`;
++    localStorage.setItem(key, JSON.stringify(top10));
++    return top10;
++  },
+   visibilityChangeEvent,
+   isFocus,
+ };
+diff --git a/src/unit/reducerType.js b/src/unit/reducerType.js
+index 28b0991..f725794 100644
+--- a/src/unit/reducerType.js
++++ b/src/unit/reducerType.js
+@@ -20,4 +20,6 @@ export const KEY_ROTATE = 'KEY_ROTATE';
+ export const KEY_RESET = 'KEY_RESET';
+ export const KEY_MUSIC = 'KEY_MUSIC';
+ export const KEY_PAUSE = 'KEY_PAUSE';
++export const KEY_CHALLENGE = 'KEY_CHALLENGE';
+ export const FOCUS = 'FOCUS';
++export const CHALLENGE_MODE = 'CHALLENGE_MODE';

@@ -3,7 +3,13 @@ import * as reducerType from '../unit/reducerType';
 import Block from '../unit/block';
 import keyboard from './keyboard';
 
-function nextBlock(next = getNextType()) {
+import store from '../store';
+
+function nextBlock(next) {
+  if (!next) {
+    const isChallenge = store.getState().get('challengeMode');
+    next = getNextType(isChallenge);
+  }
   return {
     type: reducerType.NEXT_BLOCK,
     data: next,
@@ -108,6 +114,13 @@ function focus(data) {
   };
 }
 
+function challengeMode(data) {
+  return {
+    type: reducerType.CHALLENGE_MODE,
+    data,
+  };
+}
+
 export default {
   nextBlock,
   moveBlock,
@@ -125,4 +138,5 @@ export default {
   keyboard,
   music,
   focus,
+  challengeMode,
 };

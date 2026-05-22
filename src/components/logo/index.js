@@ -134,6 +134,35 @@ export default class Logo extends React.Component {
     if (this.props.cur) {
       return null;
     }
+    if (this.props.challengeMode) {
+      const unit = require('../../unit/');
+      const scores = unit.getDailyScores();
+      let rank = -1;
+      const currentPoint = this.props.points;
+      if (currentPoint > 0) {
+        for (let i = 0; i < scores.length; i++) {
+          if (currentPoint === scores[i]) {
+            rank = i + 1;
+            break;
+          }
+        }
+      }
+      return (
+        <div className={style.logo} style={{ display: this.state.display }}>
+          <h2 style={{ fontSize: '18px', margin: '5px 0' }}>{i18n.challenge[lan]} Rank</h2>
+          {rank !== -1 && <p style={{ fontSize: '14px', margin: '5px 0', color: 'red' }}>Your Rank: {rank}</p>}
+          {scores.length === 0 ? (
+            <p>No records today</p>
+          ) : (
+            <div style={{ fontSize: '14px', lineHeight: '1.5', marginTop: '5px' }}>
+              {scores.slice(0, 5).map((s, i) => (
+                <div key={i}>{i + 1}. {s}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
     return (
       <div className={style.logo} style={{ display: this.state.display }}>
         <div className={cn({ bg: true, [style.dragon]: true, [this.state.style]: true })} />
@@ -146,6 +175,8 @@ export default class Logo extends React.Component {
 Logo.propTypes = {
   cur: propTypes.bool,
   reset: propTypes.bool.isRequired,
+  challengeMode: propTypes.bool,
+  points: propTypes.number,
 };
 Logo.statics = {
   timeout: null,

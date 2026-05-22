@@ -22,15 +22,25 @@ export default class Point extends React.Component {
   componentWillReceiveProps(nextProps) {
     this.onChange(nextProps);
   }
-  shouldComponentUpdate({ cur, point, max }) {
+  shouldComponentUpdate({ cur, point, max, challengeMode }) {
     const props = this.props;
-    return cur !== props.cur || point !== props.point || max !== props.max || !props.cur;
+    return cur !== props.cur || point !== props.point || max !== props.max || challengeMode !== props.challengeMode || !props.cur;
   }
-  onChange({ cur, point, max }) {
+  onChange({ cur, point, max, challengeMode }) {
     clearInterval(Point.timeout);
+    let displayMax = max;
+    let labelMax = ZDF;
+
+    if (challengeMode) {
+      const unit = require('../../unit/');
+      const dailyScores = unit.getDailyScores();
+      displayMax = dailyScores.length > 0 ? dailyScores[0] : 0;
+      labelMax = i18n.challenge[lan];
+    }
+
     if (cur) { // 在游戏进行中
       this.setState({
-        label: point >= max ? ZDF : DF,
+        label: point >= displayMax ? labelMax : DF,
         number: point,
       });
     } else { // 游戏未开始
@@ -41,8 +51,8 @@ export default class Point extends React.Component {
         });
         Point.timeout = setTimeout(() => {
           this.setState({
-            label: ZDF,
-            number: max,
+            label: labelMax,
+            number: displayMax,
           });
           Point.timeout = setTimeout(toggle, 3000);
         }, 3000);
@@ -52,8 +62,8 @@ export default class Point extends React.Component {
         toggle();
       } else {
         this.setState({
-          label: ZDF,
-          number: max,
+          label: labelMax,
+          number: displayMax,
         });
       }
     }
@@ -76,5 +86,6 @@ Point.propTypes = {
   cur: propTypes.bool,
   max: propTypes.number.isRequired,
   point: propTypes.number.isRequired,
+  challengeMode: propTypes.bool,
 };
 
