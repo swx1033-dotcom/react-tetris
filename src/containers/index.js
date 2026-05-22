@@ -32,17 +32,16 @@ class App extends React.Component {
     window.addEventListener('resize', this.resize.bind(this), true);
   }
   componentDidMount() {
-    if (visibilityChangeEvent) { // 将页面的焦点变换写入store
+    if (visibilityChangeEvent) {
       document.addEventListener(visibilityChangeEvent, () => {
         states.focus(isFocus());
       }, false);
     }
 
-    if (lastRecord) { // 读取记录
-      if (lastRecord.cur && !lastRecord.pause) { // 拿到上一次游戏的状态, 如果在游戏中且没有暂停, 游戏继续
+    if (lastRecord) {
+      if (lastRecord.cur && !lastRecord.pause) {
         const speedRun = this.props.speedRun;
-        let timeout = speeds[speedRun - 1] / 2; // 继续时, 给予当前下落速度一半的停留时间
-        // 停留时间不小于最快速的速度
+        let timeout = speeds[speedRun - 1] / 2;
         timeout = speedRun < speeds[speeds.length - 1] ? speeds[speeds.length - 1] : speedRun;
         states.auto(timeout);
       }
@@ -52,6 +51,9 @@ class App extends React.Component {
     } else {
       states.overStart();
     }
+  }
+  startMode(mode) {
+    states.startMode(mode);
   }
   resize() {
     this.setState({
@@ -82,6 +84,14 @@ class App extends React.Component {
       return css;
     })();
 
+    const isDaily = this.props.gameMode === 'daily';
+    const sideNumber = this.props.cur ?
+      this.props.clearLines :
+      (isDaily ? this.props.challenge.get('obstacleLines') : this.props.startLines);
+    const sideLevel = this.props.cur ? this.props.speedRun : (isDaily ? 1 : this.props.speedStart);
+    const sideLabel = this.props.cur ? i18n.cleans[lan] :
+      (isDaily ? i18n.challengeObstacle[lan] : i18n.startLine[lan]);
+
     return (
       <div
         className={style.app}
@@ -96,14 +106,26 @@ class App extends React.Component {
                 cur={this.props.cur}
                 reset={this.props.reset}
               />
-              <Logo cur={!!this.props.cur} reset={this.props.reset} />
+              <Logo
+                cur={!!this.props.cur}
+                reset={this.props.reset}
+                gameMode={this.props.gameMode}
+                challenge={this.props.challenge}
+                onStartMode={this.startMode.bind(this)}
+              />
               <div className={style.state}>
-                <Point cur={!!this.props.cur} point={this.props.points} max={this.props.max} />
-                <p>{ this.props.cur ? i18n.cleans[lan] : i18n.startLine[lan] }</p>
-                <Number number={this.props.cur ? this.props.clearLines : this.props.startLines} />
+                <Point
+                  cur={!!this.props.cur}
+                  point={this.props.points}
+                  max={this.props.max}
+                  gameMode={this.props.gameMode}
+                  challenge={this.props.challenge}
+                />
+                <p>{sideLabel}</p>
+                <Number number={sideNumber} />
                 <p>{i18n.level[lan]}</p>
                 <Number
-                  number={this.props.cur ? this.props.speedRun : this.props.speedStart}
+                  number={sideLevel}
                   length={1}
                 />
                 <p>{i18n.next[lan]}</p>
@@ -140,6 +162,8 @@ App.propTypes = {
   reset: propTypes.bool.isRequired,
   drop: propTypes.bool.isRequired,
   keyboard: propTypes.object.isRequired,
+  gameMode: propTypes.string.isRequired,
+  challenge: propTypes.object.isRequired,
 };
 
 const mapStateToProps = (state) => ({
@@ -157,6 +181,8 @@ const mapStateToProps = (state) => ({
   reset: state.get('reset'),
   drop: state.get('drop'),
   keyboard: state.get('keyboard'),
+  gameMode: state.get('gameMode'),
+  challenge: state.get('challenge'),
 });
 
 export default connect(mapStateToProps)(App);

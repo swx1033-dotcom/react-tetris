@@ -45,7 +45,7 @@ const down = (store) => {
         }
         const state = store.getState();
         const cur = state.get('cur');
-        if (cur) {
+        if (cur || state.get('gameMode') === 'daily') {
           return;
         }
         let startLines = state.get('startLines');

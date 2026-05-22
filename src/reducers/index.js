@@ -15,7 +15,8 @@ import reset from './reset';
 import drop from './drop';
 import keyboard from './keyboard';
 import focus from './focus';
-
+import gameMode from './gameMode';
+import challenge from './challenge';
 
 const rootReducer = combineReducers({
   pause,
@@ -34,6 +35,8 @@ const rootReducer = combineReducers({
   drop,
   keyboard,
   focus,
+  gameMode,
+  challenge,
 });
 
 export default rootReducer;

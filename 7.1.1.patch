@@ -1,0 +1,1042 @@
+diff --git a/i18n.json b/i18n.json
+index 5cb7e3b..b3cee73 100644
+--- a/i18n.json
++++ b/i18n.json
+@@ -121,6 +121,54 @@
+       "en": "Drop",
+       "fr": "Tomber",
+       "fa": "سقوط"
++    },
++    "normalMode": {
++      "cn": "普通模式",
++      "en": "Normal",
++      "fr": "Normal",
++      "fa": "معمولی"
++    },
++    "dailyChallenge": {
++      "cn": "每日挑战",
++      "en": "Daily",
++      "fr": "Défi",
++      "fa": "چالش روزانه"
++    },
++    "dailyTopScore": {
++      "cn": "当日最高分",
++      "en": "Top Today",
++      "fr": "Top du Jour",
++      "fa": "بیشترین امتیاز روز"
++    },
++    "yourBest": {
++      "cn": "你的最佳",
++      "en": "Your Best",
++      "fr": "Votre Meilleur",
++      "fa": "بهترین شما"
++    },
++    "yourRank": {
++      "cn": "你的排名",
++      "en": "Your Rank",
++      "fr": "Votre Rang",
++      "fa": "رتبه شما"
++    },
++    "dailyBoard": {
++      "cn": "当日排名",
++      "en": "Daily Board",
++      "fr": "Classement",
++      "fa": "جدول روزانه"
++    },
++    "noChallengeRecord": {
++      "cn": "今日暂无挑战记录",
++      "en": "No record today",
++      "fr": "Aucun score aujourd'hui",
++      "fa": "امروز رکوردی نیست"
++    },
++    "challengeObstacle": {
++      "cn": "挑战障碍",
++      "en": "Obstacles",
++      "fr": "Obstacles",
++      "fa": "موانع"
+     }
+   }
+ }
+diff --git a/src/actions/index.js b/src/actions/index.js
+index 4490c4b..6098ddc 100644
+--- a/src/actions/index.js
++++ b/src/actions/index.js
+@@ -108,6 +108,20 @@ function focus(data) {
+   };
+ }
+ 
++function gameMode(data) {
++  return {
++    type: reducerType.GAME_MODE,
++    data,
++  };
++}
++
++function challenge(data) {
++  return {
++    type: reducerType.CHALLENGE,
++    data,
++  };
++}
++
+ export default {
+   nextBlock,
+   moveBlock,
+@@ -125,4 +139,6 @@ export default {
+   keyboard,
+   music,
+   focus,
++  gameMode,
++  challenge,
+ };
+diff --git a/src/components/logo/index.js b/src/components/logo/index.js
+index 76f4db1..701ff5e 100644
+--- a/src/components/logo/index.js
++++ b/src/components/logo/index.js
+@@ -17,20 +17,24 @@ export default class Logo extends React.Component {
+     this.animate(this.props);
+   }
+   componentWillReceiveProps(nextProps) {
+-    if ( // 只有在游戏进入开始, 或结束时 触发改变
+-      (
+-        [this.props.cur, nextProps.cur].indexOf(false) !== -1 &&
+-        (this.props.cur !== nextProps.cur)
+-      ) ||
+-      (this.props.reset !== nextProps.reset)
++    if (
++      ([this.props.cur, nextProps.cur].indexOf(false) !== -1 && (this.props.cur !== nextProps.cur)) ||
++      (this.props.reset !== nextProps.reset) ||
++      (this.props.gameMode !== nextProps.gameMode)
+     ) {
+       this.animate(nextProps);
+     }
+   }
+-  shouldComponentUpdate({ cur, reset }) {
+-    return cur !== this.props.cur || reset !== this.props.reset || !cur;
++  shouldComponentUpdate({ cur, reset, gameMode, challenge }) {
++    return cur !== this.props.cur ||
++      reset !== this.props.reset ||
++      gameMode !== this.props.gameMode ||
++      challenge.get('topScore') !== this.props.challenge.get('topScore') ||
++      challenge.get('playerRank') !== this.props.challenge.get('playerRank') ||
++      challenge.get('leaderboard') !== this.props.challenge.get('leaderboard') ||
++      !cur;
+   }
+-  animate({ cur, reset }) {
++  animate({ cur, reset, gameMode }) {
+     clearTimeout(Logo.timeout);
+     this.setState({
+       style: style.r1,
+@@ -40,8 +44,12 @@ export default class Logo extends React.Component {
+       this.setState({ display: 'none' });
+       return;
+     }
++    if (gameMode === 'daily') {
++      this.setState({ display: 'block' });
++      return;
++    }
+ 
+-    let m = 'r'; // 方向
++    let m = 'r';
+     let count = 0;
+ 
+     const set = (func, delay) => {
+@@ -51,7 +59,7 @@ export default class Logo extends React.Component {
+       Logo.timeout = setTimeout(func, delay);
+     };
+ 
+-    const show = (func) => { // 显示
++    const show = (func) => {
+       set(() => {
+         this.setState({
+           display: 'block',
+@@ -62,7 +70,7 @@ export default class Logo extends React.Component {
+       }, 150);
+     };
+ 
+-    const hide = (func) => { // 隐藏
++    const hide = (func) => {
+       set(() => {
+         this.setState({
+           display: 'none',
+@@ -73,7 +81,7 @@ export default class Logo extends React.Component {
+       }, 150);
+     };
+ 
+-    const eyes = (func, delay1, delay2) => { // 龙在眨眼睛
++    const eyes = (func, delay1, delay2) => {
+       set(() => {
+         this.setState({ style: style[m + 2] });
+         set(() => {
+@@ -85,7 +93,7 @@ export default class Logo extends React.Component {
+       }, delay1);
+     };
+ 
+-    const run = (func) => { // 开始跑步啦！
++    const run = (func) => {
+       set(() => {
+         this.setState({ style: style[m + 4] });
+         set(() => {
+@@ -118,26 +126,75 @@ export default class Logo extends React.Component {
+       }, 1000, 1500);
+     };
+ 
+-    show(() => { // 忽隐忽现
++    show(() => {
+       hide(() => {
+         show(() => {
+           hide(() => {
+             show(() => {
+-              dra(); // 开始运动
++              dra();
+             });
+           });
+         });
+       });
+     });
+   }
++  renderModeButtons() {
++    return (
++      <div className={style.modeButtons}>
++        <button
++          className={cn({ [style.active]: this.props.gameMode === 'normal' })}
++          onClick={() => this.props.onStartMode('normal')}
++        >
++          {i18n.normalMode[lan]}
++        </button>
++        <button
++          className={cn({ [style.active]: this.props.gameMode === 'daily' })}
++          onClick={() => this.props.onStartMode('daily')}
++        >
++          {i18n.dailyChallenge[lan]}
++        </button>
++      </div>
++    );
++  }
++  renderDailyPanel() {
++    const leaderboard = this.props.challenge.get('leaderboard');
++    return (
++      <div className={cn(style.logo, style.challenge)} style={{ display: this.state.display }}>
++        <div className={style.challengeTitle}>{i18n.dailyChallenge[lan]}</div>
++        <div className={style.challengeMeta}>{this.props.challenge.get('dateKey')}</div>
++        <div className={style.challengeStats}>
++          <span>{i18n.dailyTopScore[lan]}</span>
++          <strong>{this.props.challenge.get('topScore')}</strong>
++        </div>
++        <div className={style.challengeStats}>
++          <span>{i18n.yourRank[lan]}</span>
++          <strong>{this.props.challenge.get('playerRank') || '--'}</strong>
++        </div>
++        <div className={style.challengeBoardTitle}>{i18n.dailyBoard[lan]}</div>
++        <div className={style.challengeBoard}>
++          {leaderboard.size ? leaderboard.map((item, index) => (
++            <div className={style.challengeRow} key={item.get('id')}>
++              <span>{`#${index + 1}`}</span>
++              <strong>{item.get('score')}</strong>
++            </div>
++          )) : <div className={style.challengeEmpty}>{i18n.noChallengeRecord[lan]}</div>}
++        </div>
++        {this.renderModeButtons()}
++      </div>
++    );
++  }
+   render() {
+     if (this.props.cur) {
+       return null;
+     }
++    if (this.props.gameMode === 'daily') {
++      return this.renderDailyPanel();
++    }
+     return (
+       <div className={style.logo} style={{ display: this.state.display }}>
+         <div className={cn({ bg: true, [style.dragon]: true, [this.state.style]: true })} />
+         <p dangerouslySetInnerHTML={{ __html: i18n.titleCenter[lan] }} />
++        {this.renderModeButtons()}
+       </div>
+     );
+   }
+@@ -146,6 +203,9 @@ export default class Logo extends React.Component {
+ Logo.propTypes = {
+   cur: propTypes.bool,
+   reset: propTypes.bool.isRequired,
++  gameMode: propTypes.string.isRequired,
++  challenge: propTypes.object.isRequired,
++  onStartMode: propTypes.func.isRequired,
+ };
+ Logo.statics = {
+   timeout: null,
+diff --git a/src/components/logo/index.less b/src/components/logo/index.less
+index f074c48..cf1b783 100644
+--- a/src/components/logo/index.less
++++ b/src/components/logo/index.less
+@@ -1,11 +1,12 @@
+ .logo {
+   width: 224px;
+-  height: 200px;
++  height: 240px;
+   position: absolute;
+-  top: 100px;
++  top: 84px;
+   left: 12px;
+   text-align: center;
+   overflow: hidden;
++  padding: 0 6px 6px;
+   p {
+     position: absolute;
+     width: 100%;
+@@ -41,4 +42,88 @@
+       -o-transform: scale(-1, 1);
+     }
+   }
+-}
+\ No newline at end of file
++}
++
++.modeButtons {
++  position: absolute;
++  left: 0;
++  right: 0;
++  bottom: 0;
++  display: flex;
++  justify-content: space-between;
++  gap: 6px;
++  button {
++    flex: 1;
++    border: 2px solid #4b5e41;
++    background: #d8e0b7;
++    color: #283324;
++    height: 36px;
++    font-size: 14px;
++    font-weight: bold;
++    cursor: pointer;
++    outline: none;
++  }
++  .active {
++    background: #364d4b;
++    color: #d8e0b7;
++  }
++}
++
++.challenge {
++  background: rgba(239, 204, 25, .35);
++  border: 2px solid #4b5e41;
++  border-radius: 8px;
++}
++
++.challengeTitle {
++  font-size: 20px;
++  font-weight: bold;
++  line-height: 32px;
++}
++
++.challengeMeta {
++  font-size: 12px;
++  line-height: 18px;
++  letter-spacing: 1px;
++  color: #364d4b;
++}
++
++.challengeStats {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  margin-top: 6px;
++  font-size: 13px;
++  strong {
++    font-size: 20px;
++    line-height: 1;
++  }
++}
++
++.challengeBoardTitle {
++  margin-top: 8px;
++  line-height: 24px;
++  font-size: 13px;
++  text-align: left;
++}
++
++.challengeBoard {
++  height: 106px;
++  overflow: hidden;
++  border: 2px solid #4b5e41;
++  background: rgba(158, 173, 134, .75);
++  padding: 4px 8px;
++}
++
++.challengeRow {
++  display: flex;
++  justify-content: space-between;
++  font-size: 13px;
++  line-height: 18px;
++}
++
++.challengeEmpty {
++  font-size: 12px;
++  line-height: 98px;
++  color: #364d4b;
++}
+diff --git a/src/components/point/index.js b/src/components/point/index.js
+index fae8e60..7049c9f 100644
+--- a/src/components/point/index.js
++++ b/src/components/point/index.js
+@@ -7,6 +7,8 @@ import { i18n, lan } from '../../unit/const';
+ const DF = i18n.point[lan];
+ const ZDF = i18n.highestScore[lan];
+ const SLDF = i18n.lastRound[lan];
++const MRDF = i18n.dailyTopScore[lan];
++const BRDF = i18n.yourBest[lan];
+ 
+ export default class Point extends React.Component {
+   constructor() {
+@@ -22,19 +24,55 @@ export default class Point extends React.Component {
+   componentWillReceiveProps(nextProps) {
+     this.onChange(nextProps);
+   }
+-  shouldComponentUpdate({ cur, point, max }) {
++  shouldComponentUpdate({ cur, point, max, gameMode, challenge }) {
+     const props = this.props;
+-    return cur !== props.cur || point !== props.point || max !== props.max || !props.cur;
++    return cur !== props.cur ||
++      point !== props.point ||
++      max !== props.max ||
++      gameMode !== props.gameMode ||
++      challenge.get('topScore') !== props.challenge.get('topScore') ||
++      challenge.get('playerBest') !== props.challenge.get('playerBest') ||
++      !props.cur;
+   }
+-  onChange({ cur, point, max }) {
++  onChange({ cur, point, max, gameMode, challenge }) {
+     clearInterval(Point.timeout);
+-    if (cur) { // 在游戏进行中
++    if (cur) {
++      if (gameMode === 'daily' && point >= challenge.get('topScore') && challenge.get('topScore') > 0) {
++        this.setState({
++          label: MRDF,
++          number: point,
++        });
++        return;
++      }
+       this.setState({
+-        label: point >= max ? ZDF : DF,
++        label: point >= max && gameMode !== 'daily' ? ZDF : DF,
+         number: point,
+       });
+-    } else { // 游戏未开始
+-      const toggle = () => { // 最高分与上轮得分交替出现
++    } else if (gameMode === 'daily') {
++      const toggle = () => {
++        this.setState({
++          label: BRDF,
++          number: challenge.get('playerBest') || point,
++        });
++        Point.timeout = setTimeout(() => {
++          this.setState({
++            label: MRDF,
++            number: challenge.get('topScore'),
++          });
++          Point.timeout = setTimeout(toggle, 3000);
++        }, 3000);
++      };
++
++      if ((challenge.get('playerBest') || point) !== 0) {
++        toggle();
++      } else {
++        this.setState({
++          label: MRDF,
++          number: challenge.get('topScore'),
++        });
++      }
++    } else {
++      const toggle = () => {
+         this.setState({
+           label: SLDF,
+           number: point,
+@@ -48,7 +86,7 @@ export default class Point extends React.Component {
+         }, 3000);
+       };
+ 
+-      if (point !== 0) { // 如果为上轮没玩, 也不用提示了
++      if (point !== 0) {
+         toggle();
+       } else {
+         this.setState({
+@@ -76,5 +114,6 @@ Point.propTypes = {
+   cur: propTypes.bool,
+   max: propTypes.number.isRequired,
+   point: propTypes.number.isRequired,
++  gameMode: propTypes.string.isRequired,
++  challenge: propTypes.object.isRequired,
+ };
+-
+diff --git a/src/containers/index.js b/src/containers/index.js
+index 6b0b735..ef3df3d 100644
+--- a/src/containers/index.js
++++ b/src/containers/index.js
+@@ -32,17 +32,16 @@ class App extends React.Component {
+     window.addEventListener('resize', this.resize.bind(this), true);
+   }
+   componentDidMount() {
+-    if (visibilityChangeEvent) { // 将页面的焦点变换写入store
++    if (visibilityChangeEvent) {
+       document.addEventListener(visibilityChangeEvent, () => {
+         states.focus(isFocus());
+       }, false);
+     }
+ 
+-    if (lastRecord) { // 读取记录
+-      if (lastRecord.cur && !lastRecord.pause) { // 拿到上一次游戏的状态, 如果在游戏中且没有暂停, 游戏继续
++    if (lastRecord) {
++      if (lastRecord.cur && !lastRecord.pause) {
+         const speedRun = this.props.speedRun;
+-        let timeout = speeds[speedRun - 1] / 2; // 继续时, 给予当前下落速度一半的停留时间
+-        // 停留时间不小于最快速的速度
++        let timeout = speeds[speedRun - 1] / 2;
+         timeout = speedRun < speeds[speeds.length - 1] ? speeds[speeds.length - 1] : speedRun;
+         states.auto(timeout);
+       }
+@@ -53,6 +52,9 @@ class App extends React.Component {
+       states.overStart();
+     }
+   }
++  startMode(mode) {
++    states.startMode(mode);
++  }
+   resize() {
+     this.setState({
+       w: document.documentElement.clientWidth,
+@@ -82,6 +84,14 @@ class App extends React.Component {
+       return css;
+     })();
+ 
++    const isDaily = this.props.gameMode === 'daily';
++    const sideNumber = this.props.cur ?
++      this.props.clearLines :
++      (isDaily ? this.props.challenge.get('obstacleLines') : this.props.startLines);
++    const sideLevel = this.props.cur ? this.props.speedRun : (isDaily ? 1 : this.props.speedStart);
++    const sideLabel = this.props.cur ? i18n.cleans[lan] :
++      (isDaily ? i18n.challengeObstacle[lan] : i18n.startLine[lan]);
++
+     return (
+       <div
+         className={style.app}
+@@ -96,14 +106,26 @@ class App extends React.Component {
+                 cur={this.props.cur}
+                 reset={this.props.reset}
+               />
+-              <Logo cur={!!this.props.cur} reset={this.props.reset} />
++              <Logo
++                cur={!!this.props.cur}
++                reset={this.props.reset}
++                gameMode={this.props.gameMode}
++                challenge={this.props.challenge}
++                onStartMode={this.startMode.bind(this)}
++              />
+               <div className={style.state}>
+-                <Point cur={!!this.props.cur} point={this.props.points} max={this.props.max} />
+-                <p>{ this.props.cur ? i18n.cleans[lan] : i18n.startLine[lan] }</p>
+-                <Number number={this.props.cur ? this.props.clearLines : this.props.startLines} />
++                <Point
++                  cur={!!this.props.cur}
++                  point={this.props.points}
++                  max={this.props.max}
++                  gameMode={this.props.gameMode}
++                  challenge={this.props.challenge}
++                />
++                <p>{sideLabel}</p>
++                <Number number={sideNumber} />
+                 <p>{i18n.level[lan]}</p>
+                 <Number
+-                  number={this.props.cur ? this.props.speedRun : this.props.speedStart}
++                  number={sideLevel}
+                   length={1}
+                 />
+                 <p>{i18n.next[lan]}</p>
+@@ -140,6 +162,8 @@ App.propTypes = {
+   reset: propTypes.bool.isRequired,
+   drop: propTypes.bool.isRequired,
+   keyboard: propTypes.object.isRequired,
++  gameMode: propTypes.string.isRequired,
++  challenge: propTypes.object.isRequired,
+ };
+ 
+ const mapStateToProps = (state) => ({
+@@ -157,6 +181,8 @@ const mapStateToProps = (state) => ({
+   reset: state.get('reset'),
+   drop: state.get('drop'),
+   keyboard: state.get('keyboard'),
++  gameMode: state.get('gameMode'),
++  challenge: state.get('challenge'),
+ });
+ 
+ export default connect(mapStateToProps)(App);
+diff --git a/src/control/states.js b/src/control/states.js
+index 4787b2f..abc546c 100644
+--- a/src/control/states.js
++++ b/src/control/states.js
+@@ -4,16 +4,21 @@ import { want, isClear, isOver } from '../unit/';
+ import actions from '../actions';
+ import { speeds, blankLine, blankMatrix, clearPoints, eachLines } from '../unit/const';
+ import { music } from '../unit/music';
++import {
++  createChallengeState,
++  getChallengeNextType,
++  getDailyChallengeMatrix,
++  submitChallengeScore,
++} from '../unit/game';
+ 
+-
+-const getStartMatrix = (startLines) => { // 生成startLines
+-  const getLine = (min, max) => { // 返回标亮个数在min~max之间一行方块, (包含边界)
++const getStartMatrix = (startLines) => {
++  const getLine = (min, max) => {
+     const count = parseInt((((max - min) + 1) * Math.random()) + min, 10);
+     const line = [];
+-    for (let i = 0; i < count; i++) { // 插入高亮
++    for (let i = 0; i < count; i++) {
+       line.push(1);
+     }
+-    for (let i = 0, len = 10 - count; i < len; i++) { // 在随机位置插入灰色
++    for (let i = 0, len = 10 - count; i < len; i++) {
+       const index = parseInt(((line.length + 1) * Math.random()), 10);
+       line.splice(index, 0, 0);
+     }
+@@ -23,32 +28,61 @@ const getStartMatrix = (startLines) => { // 生成startLines
+   let startMatrix = List([]);
+ 
+   for (let i = 0; i < startLines; i++) {
+-    if (i <= 2) { // 0-3
++    if (i <= 2) {
+       startMatrix = startMatrix.push(getLine(5, 8));
+-    } else if (i <= 6) { // 4-6
++    } else if (i <= 6) {
+       startMatrix = startMatrix.push(getLine(4, 9));
+-    } else { // 7-9
++    } else {
+       startMatrix = startMatrix.push(getLine(3, 9));
+     }
+   }
+-  for (let i = 0, len = 20 - startLines; i < len; i++) { // 插入上部分的灰色
++  for (let i = 0, len = 20 - startLines; i < len; i++) {
+     startMatrix = startMatrix.unshift(List(blankLine));
+   }
+   return startMatrix;
+ };
+ 
++const getBaseSpeed = (state = store.getState()) => (state.get('gameMode') === 'daily' ? 1 : state.get('speedStart'));
++
++const syncChallenge = () => {
++  const challengeState = store.getState().get('challenge');
++  const challenge = createChallengeState(challengeState && challengeState.toJS ? challengeState.toJS() : {});
++  store.dispatch(actions.challenge(challenge));
++  return challenge;
++};
++
++const setDailyNext = (sequenceIndex) => {
++  const challenge = syncChallenge();
++  store.dispatch(actions.challenge({ sequenceIndex }));
++  store.dispatch(actions.nextBlock(getChallengeNextType(challenge.dateKey, sequenceIndex)));
++  return challenge;
++};
++
+ const states = {
+-  // 自动下落setTimeout变量
+   fallInterval: null,
+ 
+-  // 游戏开始
+   start: () => {
+     if (music.start) {
+       music.start();
+     }
+     const state = store.getState();
++    const isDaily = state.get('gameMode') === 'daily';
++    const baseSpeed = getBaseSpeed(state);
++
+     states.dispatchPoints(0);
+-    store.dispatch(actions.speedRun(state.get('speedStart')));
++    store.dispatch(actions.clearLines(0));
++    store.dispatch(actions.speedRun(baseSpeed));
++
++    if (isDaily) {
++      const challenge = syncChallenge();
++      store.dispatch(actions.matrix(getDailyChallengeMatrix(challenge.dateKey)));
++      store.dispatch(actions.moveBlock({ type: getChallengeNextType(challenge.dateKey, 0) }));
++      store.dispatch(actions.challenge({ sequenceIndex: 1 }));
++      store.dispatch(actions.nextBlock(getChallengeNextType(challenge.dateKey, 1)));
++      states.auto();
++      return;
++    }
++
+     const startLines = state.get('startLines');
+     const startMatrix = getStartMatrix(startLines);
+     store.dispatch(actions.matrix(startMatrix));
+@@ -57,7 +91,16 @@ const states = {
+     states.auto();
+   },
+ 
+-  // 自动下落
++  startMode: (mode) => {
++    clearTimeout(states.fallInterval);
++    store.dispatch(actions.gameMode(mode));
++    if (mode === 'daily') {
++      syncChallenge();
++    }
++    states.overEnd();
++    states.start();
++  },
++
+   auto: (timeout) => {
+     const out = (timeout < 0 ? 0 : timeout);
+     let state = store.getState();
+@@ -75,7 +118,7 @@ const states = {
+         const xy = cur && cur.xy;
+         shape.forEach((m, k1) => (
+           m.forEach((n, k2) => {
+-            if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
++            if (n && xy.get(0) + k1 >= 0) {
+               let line = matrix.get(xy.get(0) + k1);
+               line = line.set(xy.get(1) + k2, 1);
+               matrix = matrix.set(xy.get(0) + k1, line);
+@@ -90,7 +133,6 @@ const states = {
+       out === undefined ? speeds[state.get('speedRun') - 1] : out);
+   },
+ 
+-  // 一个方块结束, 触发下一个
+   nextAround: (matrix, stopDownTrigger) => {
+     clearTimeout(states.fallInterval);
+     store.dispatch(actions.lock(true));
+@@ -100,7 +142,7 @@ const states = {
+     }
+ 
+     const addPoints = (store.getState().get('points') + 10) +
+-      ((store.getState().get('speedRun') - 1) * 2); // 速度越快, 得分越高
++      ((store.getState().get('speedRun') - 1) * 2);
+ 
+     states.dispatchPoints(addPoints);
+ 
+@@ -114,31 +156,40 @@ const states = {
+       if (music.gameover) {
+         music.gameover();
+       }
+-      states.overStart();
++      states.overStart({ challengeOver: true });
+       return;
+     }
+     setTimeout(() => {
+       store.dispatch(actions.lock(false));
+-      store.dispatch(actions.moveBlock({ type: store.getState().get('next') }));
+-      store.dispatch(actions.nextBlock());
++      const state = store.getState();
++      store.dispatch(actions.moveBlock({ type: state.get('next') }));
++      if (state.get('gameMode') === 'daily') {
++        const challenge = syncChallenge();
++        const nextIndex = challenge.sequenceIndex + 1;
++        store.dispatch(actions.challenge({ sequenceIndex: nextIndex }));
++        store.dispatch(actions.nextBlock(getChallengeNextType(challenge.dateKey, nextIndex)));
++      } else {
++        store.dispatch(actions.nextBlock());
++      }
+       states.auto();
+     }, 100);
+   },
+ 
+-  // 页面焦点变换
+-  focus: (isFocus) => {
+-    store.dispatch(actions.focus(isFocus));
+-    if (!isFocus) {
++  focus: (isFocusNow) => {
++    store.dispatch(actions.focus(isFocusNow));
++    if (!isFocusNow) {
+       clearTimeout(states.fallInterval);
+       return;
+     }
++    if (store.getState().get('gameMode') === 'daily') {
++      syncChallenge();
++    }
+     const state = store.getState();
+     if (state.get('cur') && !state.get('reset') && !state.get('pause')) {
+       states.auto();
+     }
+   },
+ 
+-  // 暂停
+   pause: (isPause) => {
+     store.dispatch(actions.pause(isPause));
+     if (isPause) {
+@@ -148,7 +199,6 @@ const states = {
+     states.auto();
+   },
+ 
+-  // 消除行
+   clearLines: (matrix, lines) => {
+     const state = store.getState();
+     let newMatrix = matrix;
+@@ -158,43 +208,61 @@ const states = {
+     });
+     store.dispatch(actions.matrix(newMatrix));
+     store.dispatch(actions.moveBlock({ type: state.get('next') }));
+-    store.dispatch(actions.nextBlock());
++    if (state.get('gameMode') === 'daily') {
++      const challenge = syncChallenge();
++      const nextIndex = challenge.sequenceIndex + 1;
++      store.dispatch(actions.challenge({ sequenceIndex: nextIndex }));
++      store.dispatch(actions.nextBlock(getChallengeNextType(challenge.dateKey, nextIndex)));
++    } else {
++      store.dispatch(actions.nextBlock());
++    }
+     states.auto();
+     store.dispatch(actions.lock(false));
+-    const clearLines = state.get('clearLines') + lines.length;
+-    store.dispatch(actions.clearLines(clearLines)); // 更新消除行
++    const clearLinesCount = state.get('clearLines') + lines.length;
++    store.dispatch(actions.clearLines(clearLinesCount));
+ 
+     const addPoints = store.getState().get('points') +
+-      clearPoints[lines.length - 1]; // 一次消除的行越多, 加分越多
++      clearPoints[lines.length - 1];
+     states.dispatchPoints(addPoints);
+ 
+-    const speedAdd = Math.floor(clearLines / eachLines); // 消除行数, 增加对应速度
+-    let speedNow = state.get('speedStart') + speedAdd;
++    const speedAdd = Math.floor(clearLinesCount / eachLines);
++    let speedNow = getBaseSpeed(state) + speedAdd;
+     speedNow = speedNow > 6 ? 6 : speedNow;
+     store.dispatch(actions.speedRun(speedNow));
+   },
+ 
+-  // 游戏结束, 触发动画
+-  overStart: () => {
++  overStart: (option = {}) => {
+     clearTimeout(states.fallInterval);
++    const state = store.getState();
++    if (option.challengeOver && state.get('gameMode') === 'daily') {
++      const result = submitChallengeScore(state.get('challenge').toJS(), state.get('points'));
++      store.dispatch(actions.challenge(result));
++    }
+     store.dispatch(actions.lock(true));
+     store.dispatch(actions.reset(true));
+     store.dispatch(actions.pause(false));
+   },
+ 
+-  // 游戏结束动画完成
+   overEnd: () => {
+     store.dispatch(actions.matrix(blankMatrix));
+     store.dispatch(actions.moveBlock({ reset: true }));
+     store.dispatch(actions.reset(false));
+     store.dispatch(actions.lock(false));
+     store.dispatch(actions.clearLines(0));
++    if (store.getState().get('gameMode') === 'daily') {
++      setDailyNext(0);
++      return;
++    }
++    store.dispatch(actions.nextBlock());
+   },
+ 
+-  // 写入分数
+-  dispatchPoints: (point) => { // 写入分数, 同时判断是否创造最高分
++  dispatchPoints: (point) => {
+     store.dispatch(actions.points(point));
+-    if (point > 0 && point > store.getState().get('max')) {
++    const state = store.getState();
++    if (state.get('gameMode') === 'daily') {
++      return;
++    }
++    if (point > 0 && point > state.get('max')) {
+       store.dispatch(actions.max(point));
+     }
+   },
+diff --git a/src/control/todo/down.js b/src/control/todo/down.js
+index b74deea..c590a9c 100644
+--- a/src/control/todo/down.js
++++ b/src/control/todo/down.js
+@@ -37,7 +37,7 @@ const down = (store) => {
+           const xy = cur.xy;
+           shape.forEach((m, k1) => (
+             m.forEach((n, k2) => {
+-              if (n && xy.get(0) + k1 >= 0) { // 竖坐标可以为负
++              if (n && xy.get(0) + k1 >= 0) {
+                 let line = matrix.get(xy.get(0) + k1);
+                 line = line.set(xy.get(1) + k2, 1);
+                 matrix = matrix.set(xy.get(0) + k1, line);
+@@ -59,7 +59,7 @@ const down = (store) => {
+         }
+         const state = store.getState();
+         const cur = state.get('cur');
+-        if (cur) {
++        if (cur || state.get('gameMode') === 'daily') {
+           return;
+         }
+         if (music.move) {
+@@ -80,7 +80,6 @@ const up = (store) => {
+   });
+ };
+ 
+-
+ export default {
+   down,
+   up,
+diff --git a/src/control/todo/left.js b/src/control/todo/left.js
+index 718e1b2..4ed5ccb 100644
+--- a/src/control/todo/left.js
++++ b/src/control/todo/left.js
+@@ -33,13 +33,16 @@ const down = (store) => {
+           store.dispatch(actions.moveBlock(next));
+           timeStamp = next.timeStamp;
+         } else {
+-          cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10); // 真实移动delay多一点，碰壁delay少一点
++          cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10);
+           store.dispatch(actions.moveBlock(cur));
+           timeStamp = cur.timeStamp;
+         }
+         const remain = speeds[state.get('speedRun') - 1] - (Date.now() - timeStamp);
+         states.auto(remain);
+       } else {
++        if (state.get('gameMode') === 'daily') {
++          return;
++        }
+         let speed = state.get('speedStart');
+         speed = speed - 1 < 1 ? 6 : speed - 1;
+         store.dispatch(actions.speedStart(speed));
+diff --git a/src/control/todo/right.js b/src/control/todo/right.js
+index 6cec9c1..88ff98b 100644
+--- a/src/control/todo/right.js
++++ b/src/control/todo/right.js
+@@ -33,13 +33,16 @@ const down = (store) => {
+           store.dispatch(actions.moveBlock(next));
+           timeStamp = next.timeStamp;
+         } else {
+-          cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10); // 真实移动delay多一点，碰壁delay少一点
++          cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10);
+           store.dispatch(actions.moveBlock(cur));
+           timeStamp = cur.timeStamp;
+         }
+         const remain = speeds[state.get('speedRun') - 1] - (Date.now() - timeStamp);
+         states.auto(remain);
+       } else {
++        if (state.get('gameMode') === 'daily') {
++          return;
++        }
+         let speed = state.get('speedStart');
+         speed = speed + 1 > 6 ? 1 : speed + 1;
+         store.dispatch(actions.speedStart(speed));
+diff --git a/src/control/todo/rotate.js b/src/control/todo/rotate.js
+index 1cbda8a..1a6a43f 100644
+--- a/src/control/todo/rotate.js
++++ b/src/control/todo/rotate.js
+@@ -45,7 +45,7 @@ const down = (store) => {
+         }
+         const state = store.getState();
+         const cur = state.get('cur');
+-        if (cur) {
++        if (cur || state.get('gameMode') === 'daily') {
+           return;
+         }
+         let startLines = state.get('startLines');
+diff --git a/src/reducers/index.js b/src/reducers/index.js
+index 2407ecc..d3a2beb 100644
+--- a/src/reducers/index.js
++++ b/src/reducers/index.js
+@@ -15,7 +15,8 @@ import reset from './reset';
+ import drop from './drop';
+ import keyboard from './keyboard';
+ import focus from './focus';
+-
++import gameMode from './gameMode';
++import challenge from './challenge';
+ 
+ const rootReducer = combineReducers({
+   pause,
+@@ -34,6 +35,8 @@ const rootReducer = combineReducers({
+   drop,
+   keyboard,
+   focus,
++  gameMode,
++  challenge,
+ });
+ 
+ export default rootReducer;
+diff --git a/src/unit/const.js b/src/unit/const.js
+index 14c3006..eaba8a7 100644
+--- a/src/unit/const.js
++++ b/src/unit/const.js
+@@ -63,7 +63,50 @@ const clearPoints = [100, 300, 700, 1500];
+ 
+ const StorageKey = 'REACT_TETRIS';
+ 
+-const lastRecord = (() => { // 上一把的状态
++const getDateKey = (date = new Date()) => {
++  const year = date.getFullYear();
++  const month = `${date.getMonth() + 1}`.padStart(2, '0');
++  const day = `${date.getDate()}`.padStart(2, '0');
++  return `${year}-${month}-${day}`;
++};
++
++const getDefaultChallengeRecord = () => ({
++  dateKey: getDateKey(),
++  seed: 0,
++  obstacleLines: 0,
++  sequenceIndex: 0,
++  leaderboard: [],
++  playerBest: 0,
++  playerRank: 0,
++  topScore: 0,
++  lastPlayedScore: 0,
++});
++
++const sanitizeLastRecord = (data) => {
++  const today = getDateKey();
++  const nextData = data || {};
++  const gameMode = nextData.gameMode === 'daily' ? 'daily' : 'normal';
++
++  nextData.gameMode = gameMode;
++  if (!nextData.challenge || nextData.challenge.dateKey !== today) {
++    nextData.challenge = getDefaultChallengeRecord();
++    if (gameMode === 'daily') {
++      nextData.gameMode = 'normal';
++      nextData.cur = null;
++      nextData.matrix = blankMatrix.toJS();
++      nextData.points = 0;
++      nextData.clearLines = 0;
++      nextData.pause = false;
++      nextData.reset = false;
++      nextData.lock = false;
++      nextData.drop = false;
++    }
++  }
++
++  return nextData;
++};
++
++const lastRecord = (() => {
+   let data = localStorage.getItem(StorageKey);
+   if (!data) {
+     return false;
+@@ -74,6 +117,7 @@ const lastRecord = (() => { // 上一把的状态
+     }
+     data = decodeURIComponent(data);
+     data = JSON.parse(data);
++    data = sanitizeLastRecord(data);
+   } catch (e) {
+     if (window.console || window.console.error) {
+       window.console.error('读取记录错误:', e);
+@@ -91,9 +135,9 @@ const transform = (function () {
+   return trans.filter((e) => body.style[e] !== undefined)[0];
+ }());
+ 
+-const eachLines = 20; // 每消除eachLines行, 增加速度
++const eachLines = 20;
+ 
+-const getParam = (param) => { // 获取浏览器参数
++const getParam = (param) => {
+   const r = new RegExp(`\\?(?:.+&)?${param}=(.*?)(?:&.*)?$`);
+   const m = window.location.toString().match(r);
+   return m ? decodeURI(m[1]) : '';
+diff --git a/src/unit/reducerType.js b/src/unit/reducerType.js
+index 28b0991..0aa176e 100644
+--- a/src/unit/reducerType.js
++++ b/src/unit/reducerType.js
+@@ -21,3 +21,5 @@ export const KEY_RESET = 'KEY_RESET';
+ export const KEY_MUSIC = 'KEY_MUSIC';
+ export const KEY_PAUSE = 'KEY_PAUSE';
+ export const FOCUS = 'FOCUS';
++export const GAME_MODE = 'GAME_MODE';
++export const CHALLENGE = 'CHALLENGE';

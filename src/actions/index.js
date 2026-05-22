@@ -108,6 +108,20 @@ function focus(data) {
   };
 }
 
+function gameMode(data) {
+  return {
+    type: reducerType.GAME_MODE,
+    data,
+  };
+}
+
+function challenge(data) {
+  return {
+    type: reducerType.CHALLENGE,
+    data,
+  };
+}
+
 export default {
   nextBlock,
   moveBlock,
@@ -125,4 +139,6 @@ export default {
   keyboard,
   music,
   focus,
+  gameMode,
+  challenge,
 };

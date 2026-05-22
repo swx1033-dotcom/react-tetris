@@ -63,7 +63,50 @@ const clearPoints = [100, 300, 700, 1500];
 
 const StorageKey = 'REACT_TETRIS';
 
-const lastRecord = (() => { // 上一把的状态
+const getDateKey = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getDefaultChallengeRecord = () => ({
+  dateKey: getDateKey(),
+  seed: 0,
+  obstacleLines: 0,
+  sequenceIndex: 0,
+  leaderboard: [],
+  playerBest: 0,
+  playerRank: 0,
+  topScore: 0,
+  lastPlayedScore: 0,
+});
+
+const sanitizeLastRecord = (data) => {
+  const today = getDateKey();
+  const nextData = data || {};
+  const gameMode = nextData.gameMode === 'daily' ? 'daily' : 'normal';
+
+  nextData.gameMode = gameMode;
+  if (!nextData.challenge || nextData.challenge.dateKey !== today) {
+    nextData.challenge = getDefaultChallengeRecord();
+    if (gameMode === 'daily') {
+      nextData.gameMode = 'normal';
+      nextData.cur = null;
+      nextData.matrix = blankMatrix.toJS();
+      nextData.points = 0;
+      nextData.clearLines = 0;
+      nextData.pause = false;
+      nextData.reset = false;
+      nextData.lock = false;
+      nextData.drop = false;
+    }
+  }
+
+  return nextData;
+};
+
+const lastRecord = (() => {
   let data = localStorage.getItem(StorageKey);
   if (!data) {
     return false;
@@ -74,6 +117,7 @@ const lastRecord = (() => { // 上一把的状态
     }
     data = decodeURIComponent(data);
     data = JSON.parse(data);
+    data = sanitizeLastRecord(data);
   } catch (e) {
     if (window.console || window.console.error) {
       window.console.error('读取记录错误:', e);
@@ -91,9 +135,9 @@ const transform = (function () {
   return trans.filter((e) => body.style[e] !== undefined)[0];
 }());
 
-const eachLines = 20; // 每消除eachLines行, 增加速度
+const eachLines = 20;
 
-const getParam = (param) => { // 获取浏览器参数
+const getParam = (param) => {
   const r = new RegExp(`\\?(?:.+&)?${param}=(.*?)(?:&.*)?$`);
   const m = window.location.toString().match(r);
   return m ? decodeURI(m[1]) : '';

@@ -121,6 +121,54 @@
       "en": "Drop",
       "fr": "Tomber",
       "fa": "سقوط"
+    },
+    "normalMode": {
+      "cn": "普通模式",
+      "en": "Normal",
+      "fr": "Normal",
+      "fa": "معمولی"
+    },
+    "dailyChallenge": {
+      "cn": "每日挑战",
+      "en": "Daily",
+      "fr": "Défi",
+      "fa": "چالش روزانه"
+    },
+    "dailyTopScore": {
+      "cn": "当日最高分",
+      "en": "Top Today",
+      "fr": "Top du Jour",
+      "fa": "بیشترین امتیاز روز"
+    },
+    "yourBest": {
+      "cn": "你的最佳",
+      "en": "Your Best",
+      "fr": "Votre Meilleur",
+      "fa": "بهترین شما"
+    },
+    "yourRank": {
+      "cn": "你的排名",
+      "en": "Your Rank",
+      "fr": "Votre Rang",
+      "fa": "رتبه شما"
+    },
+    "dailyBoard": {
+      "cn": "当日排名",
+      "en": "Daily Board",
+      "fr": "Classement",
+      "fa": "جدول روزانه"
+    },
+    "noChallengeRecord": {
+      "cn": "今日暂无挑战记录",
+      "en": "No record today",
+      "fr": "Aucun score aujourd'hui",
+      "fa": "امروز رکوردی نیست"
+    },
+    "challengeObstacle": {
+      "cn": "挑战障碍",
+      "en": "Obstacles",
+      "fr": "Obstacles",
+      "fa": "موانع"
     }
   }
 }

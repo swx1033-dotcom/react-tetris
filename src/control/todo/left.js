@@ -33,13 +33,16 @@ const down = (store) => {
           store.dispatch(actions.moveBlock(next));
           timeStamp = next.timeStamp;
         } else {
-          cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10); // 真实移动delay多一点，碰壁delay少一点
+          cur.timeStamp += parseInt(parseInt(delay, 10) / 1.5, 10);
           store.dispatch(actions.moveBlock(cur));
           timeStamp = cur.timeStamp;
         }
         const remain = speeds[state.get('speedRun') - 1] - (Date.now() - timeStamp);
         states.auto(remain);
       } else {
+        if (state.get('gameMode') === 'daily') {
+          return;
+        }
         let speed = state.get('speedStart');
         speed = speed - 1 < 1 ? 6 : speed - 1;
         store.dispatch(actions.speedStart(speed));
