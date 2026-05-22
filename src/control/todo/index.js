@@ -6,6 +6,8 @@ import space from './space';
 import s from './s';
 import r from './r';
 import p from './p';
+import z from './z';
+import hold from './hold';
 
 export default {
   left,
@@ -16,4 +18,6 @@ export default {
   r,
   p,
   s,
+  z,
+  hold,
 };

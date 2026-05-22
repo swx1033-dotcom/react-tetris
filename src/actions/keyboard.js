@@ -56,6 +56,20 @@ function pause(data) {
   };
 }
 
+function keyUndo(data) {
+  return {
+    type: reducerType.KEY_UNDO,
+    data,
+  };
+}
+
+function hold(data) {
+  return {
+    type: reducerType.KEY_HOLD,
+    data,
+  };
+}
+
 export default {
   drop,
   down,
@@ -65,4 +79,6 @@ export default {
   reset,
   music,
   pause,
+  keyUndo,
+  hold,
 };

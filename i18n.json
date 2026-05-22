@@ -74,6 +74,12 @@
       "fr": "Prochain",
       "fa": "بعدی"
     },
+    "hold": {
+      "cn": "暂存",
+      "en": "Hold",
+      "fr": "Tenir",
+      "fa": "نگه داشتن"
+    },
     "pause": {
       "cn": "暂停",
       "en": "Pause",
@@ -121,6 +127,12 @@
       "en": "Drop",
       "fr": "Tomber",
       "fa": "سقوط"
+    },
+    "undo": {
+      "cn": "撤销",
+      "en": "Undo",
+      "fr": "Annuler",
+      "fa": "برگشت"
     }
   }
 }

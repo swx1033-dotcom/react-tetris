@@ -108,6 +108,26 @@ function focus(data) {
   };
 }
 
+function undo() {
+  return {
+    type: reducerType.UNDO,
+  };
+}
+
+function holdBlock(data) {
+  return {
+    type: reducerType.HOLD_BLOCK,
+    data,
+  };
+}
+
+function canHold(data) {
+  return {
+    type: reducerType.CAN_HOLD,
+    data,
+  };
+}
+
 export default {
   nextBlock,
   moveBlock,
@@ -122,7 +142,9 @@ export default {
   max,
   drop,
   pause,
-  keyboard,
   music,
   focus,
+  undo,
+  holdBlock,
+  canHold,
 };

@@ -15,6 +15,9 @@ import reset from './reset';
 import drop from './drop';
 import keyboard from './keyboard';
 import focus from './focus';
+import hold from './hold';
+import canHold from './canHold';
+import createUndoReducer from './undo';
 
 
 const rootReducer = combineReducers({
@@ -34,6 +37,8 @@ const rootReducer = combineReducers({
   drop,
   keyboard,
   focus,
+  hold,
+  canHold,
 });
 
-export default rootReducer;
+export default createUndoReducer(rootReducer);

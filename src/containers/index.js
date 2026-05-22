@@ -9,6 +9,7 @@ import Matrix from '../components/matrix';
 import Decorate from '../components/decorate';
 import Number from '../components/number';
 import Next from '../components/next';
+import Hold from '../components/hold';
 import Music from '../components/music';
 import Pause from '../components/pause';
 import Point from '../components/point';
@@ -18,6 +19,7 @@ import Guide from '../components/guide';
 
 import { transform, lastRecord, speeds, i18n, lan } from '../unit/const';
 import { visibilityChangeEvent, isFocus } from '../unit/';
+import { canUndo } from '../reducers/undo';
 import states from '../control/states';
 
 class App extends React.Component {
@@ -106,6 +108,8 @@ class App extends React.Component {
                   number={this.props.cur ? this.props.speedRun : this.props.speedStart}
                   length={1}
                 />
+                <p>{i18n.hold[lan]}</p>
+                <Hold data={this.props.hold} />
                 <p>{i18n.next[lan]}</p>
                 <Next data={this.props.next} />
                 <div className={style.bottom}>
@@ -129,6 +133,7 @@ App.propTypes = {
   pause: propTypes.bool.isRequired,
   matrix: propTypes.object.isRequired,
   next: propTypes.string.isRequired,
+  hold: propTypes.string,
   cur: propTypes.object,
   dispatch: propTypes.func.isRequired,
   speedStart: propTypes.number.isRequired,
@@ -147,6 +152,7 @@ const mapStateToProps = (state) => ({
   music: state.get('music'),
   matrix: state.get('matrix'),
   next: state.get('next'),
+  hold: state.get('hold'),
   cur: state.get('cur'),
   speedStart: state.get('speedStart'),
   speedRun: state.get('speedRun'),
@@ -157,6 +163,7 @@ const mapStateToProps = (state) => ({
   reset: state.get('reset'),
   drop: state.get('drop'),
   keyboard: state.get('keyboard'),
+  canUndo: canUndo(),
 });
 
 export default connect(mapStateToProps)(App);

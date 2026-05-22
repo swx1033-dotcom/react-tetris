@@ -4,6 +4,7 @@ import { want, isClear, isOver } from '../unit/';
 import actions from '../actions';
 import { speeds, blankLine, blankMatrix, clearPoints, eachLines } from '../unit/const';
 import { music } from '../unit/music';
+import { resetUndoStack } from '../reducers/undo';
 
 
 const getStartMatrix = (startLines) => { // 生成startLines
@@ -46,6 +47,7 @@ const states = {
     if (music.start) {
       music.start();
     }
+    resetUndoStack();
     const state = store.getState();
     states.dispatchPoints(0);
     store.dispatch(actions.speedRun(state.get('speedStart')));
@@ -54,6 +56,7 @@ const states = {
     store.dispatch(actions.matrix(startMatrix));
     store.dispatch(actions.moveBlock({ type: state.get('next') }));
     store.dispatch(actions.nextBlock());
+    store.dispatch(actions.canHold(true));
     states.auto();
   },
 
@@ -121,6 +124,7 @@ const states = {
       store.dispatch(actions.lock(false));
       store.dispatch(actions.moveBlock({ type: store.getState().get('next') }));
       store.dispatch(actions.nextBlock());
+      store.dispatch(actions.canHold(true));
       states.auto();
     }, 100);
   },
@@ -159,6 +163,7 @@ const states = {
     store.dispatch(actions.matrix(newMatrix));
     store.dispatch(actions.moveBlock({ type: state.get('next') }));
     store.dispatch(actions.nextBlock());
+    store.dispatch(actions.canHold(true));
     states.auto();
     store.dispatch(actions.lock(false));
     const clearLines = state.get('clearLines') + lines.length;
@@ -186,6 +191,8 @@ const states = {
   overEnd: () => {
     store.dispatch(actions.matrix(blankMatrix));
     store.dispatch(actions.moveBlock({ reset: true }));
+    store.dispatch(actions.holdBlock(null));
+    store.dispatch(actions.canHold(true));
     store.dispatch(actions.reset(false));
     store.dispatch(actions.lock(false));
     store.dispatch(actions.clearLines(0));
@@ -197,6 +204,24 @@ const states = {
     if (point > 0 && point > store.getState().get('max')) {
       store.dispatch(actions.max(point));
     }
+  },
+
+  // 暂存方块
+  hold: () => {
+    const state = store.getState();
+    const cur = state.get('cur');
+    const hold = state.get('hold');
+
+    store.dispatch(actions.holdBlock(cur.type));
+
+    if (hold === null) {
+      store.dispatch(actions.moveBlock({ type: state.get('next') }));
+      store.dispatch(actions.nextBlock());
+    } else {
+      store.dispatch(actions.moveBlock({ type: hold }));
+    }
+
+    store.dispatch(actions.canHold(false));
   },
 };
 
